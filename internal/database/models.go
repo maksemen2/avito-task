@@ -22,7 +22,7 @@ type Transaction struct {
 	CreatedAt  time.Time `gorm:"autoCreateTime"`
 }
 
-// Необходимо для избежания хардкодинга имен таблиц в internal/dao/transaction.go/GetHistoryByUserID
+// Необходимо для избежания хардкодинга имен таблиц в internal/dao/transaction.go/GetHistoryByUserID, маппер при создании таблиц будет использовать имена таблиц из этих методов
 func (Transaction) TableName() string {
 	return "transactions"
 }
