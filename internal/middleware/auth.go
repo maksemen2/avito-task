@@ -8,7 +8,7 @@ import (
 	"github.com/maksemen2/avito-task/internal/auth"
 )
 
-func AuthMiddleware() gin.HandlerFunc {
+func AuthMiddleware(jwtManager *auth.JWTManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenStr := c.GetHeader("Authorization")
 		if tokenStr == "" {
@@ -16,7 +16,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		t, err := auth.ParseJwt(tokenStr)
+		t, err := jwtManager.ParseToken(tokenStr)
 		if err != nil || !t.Valid {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return

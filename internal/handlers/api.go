@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/maksemen2/avito-task/internal/auth"
 	"github.com/maksemen2/avito-task/internal/middleware"
 	"github.com/maksemen2/avito-task/internal/models"
 	"golang.org/x/crypto/bcrypt"
@@ -39,7 +38,7 @@ func (h *RequestsHandler) Authenticate(c *gin.Context) {
 		return
 	}
 
-	token, err := auth.CreateJwt(user.ID, user.Username)
+	token, err := h.JWTManager.GenerateToken(user.ID, user.Username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Errors: models.ErrIternal})
 		return

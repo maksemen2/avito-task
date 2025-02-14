@@ -14,7 +14,7 @@ func SetupRoutes(handler *handlers.RequestsHandler) *gin.Engine {
 	apiGroup.Group("/auth", handler.Authenticate)
 
 	protectedGroup := apiGroup.Group("")
-	protectedGroup.Use(middleware.AuthMiddleware())
+	protectedGroup.Use(middleware.AuthMiddleware(handler.JWTManager))
 	{
 		protectedGroup.GET("/info", handler.GetInfo)
 		protectedGroup.GET("/buy/:item", handler.BuyItem)
