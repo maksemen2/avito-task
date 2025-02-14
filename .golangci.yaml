@@ -1,0 +1,24 @@
+linters:
+  enable:
+    - bodyclose
+    - dupl
+    - funlen
+    - gochecknoglobals
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - misspell
+    - nakedret
+    - rowserrcheck
+    - exportloopref
+    - stylecheck
+    - unconvert
+    - whitespace
+    - wsl
+  disable:
+    - errcheck
+
+run:
+  deadline: 3m
