@@ -35,7 +35,7 @@ func (dao *HolderDAO) TransferCoins(senderID, recieverID uint, amount int) error
 	}
 
 	//Добавляем получателю
-	if err := tx.Model(&database.User{}).Where("id = ?", senderID).Update("coins", gorm.Expr("coins + ?", amount)).Error; err != nil {
+	if err := tx.Model(&database.User{}).Where("id = ?", recieverID).Update("coins", gorm.Expr("coins + ?", amount)).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
