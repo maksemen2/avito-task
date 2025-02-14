@@ -11,7 +11,10 @@ func SetupRoutes(handler *handlers.RequestsHandler) *gin.Engine {
 
 	apiGroup := router.Group("/api")
 
-	apiGroup.Group("/auth", handler.Authenticate)
+	apiGroup.Group("")
+	{
+		apiGroup.POST("/auth", handler.Authenticate)
+	}
 
 	protectedGroup := apiGroup.Group("")
 	protectedGroup.Use(middleware.AuthMiddleware(handler.JWTManager))
