@@ -29,13 +29,13 @@ func (dao *HolderDAO) TransferCoins(senderID, recieverID uint, amount int) error
 	}
 
 	//Вычитаем монеты у отправителя
-	if err := tx.Model(&database.User{}).Update("coins", gorm.Expr("coins - ?", amount)).Where("id = ?", senderID).Error; err != nil {
+	if err := tx.Model(&database.User{}).Where("id = ?", senderID).Update("coins", gorm.Expr("coins - ?", amount)).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
 	//Добавляем получателю
-	if err := tx.Model(&database.User{}).Update("coins", gorm.Expr("coins + ?", amount)).Where("id = ?", recieverID).Error; err != nil {
+	if err := tx.Model(&database.User{}).Where("id = ?", senderID).Update("coins", gorm.Expr("coins + ?", amount)).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -56,7 +56,7 @@ func (dao *HolderDAO) BuyItem(buyerID uint, goodName string) error {
 	}
 
 	//Списываем монеты
-	if err := tx.Model(&database.User{}).Update("coins", gorm.Expr("coins - ?", 100)).Where("id = ?", buyerID).Error; err != nil {
+	if err := tx.Model(&database.User{}).Where("id = ?", buyerID).Update("coins", gorm.Expr("coins - ?", 100)).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
