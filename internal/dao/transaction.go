@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"github.com/maksemen2/avito-task/internal/database"
 	"github.com/maksemen2/avito-task/internal/models"
 	"gorm.io/gorm"
 )
@@ -17,7 +18,9 @@ func (dao *TransactionDAO) GetHistoryByUserID(userID uint) ([]models.ReceivedCoi
 	var received []models.ReceivedCoins
 	var sent []models.SentCoins
 
-	if err := dao.db.Table("transactions t").
+	transactionTableName := database.Transaction{}.TableName() + " t"
+
+	if err := dao.db.Table(transactionTableName).
 		Select("u.username as fromUser, t.amount").
 		Joins("JOIN users u ON u.id = t.from_user_id").
 		Where("t.to_user_id = ?", userID).
@@ -25,7 +28,7 @@ func (dao *TransactionDAO) GetHistoryByUserID(userID uint) ([]models.ReceivedCoi
 		return nil, nil, err
 	}
 
-	if err := dao.db.Table("transactions t").
+	if err := dao.db.Table(transactionTableName).
 		Select("u.username as toUser, t.amount").
 		Joins("JOIN users u ON u.id = t.to_user_id").
 		Where("t.from_user_id = ?", userID).

@@ -2,8 +2,6 @@ package database
 
 import (
 	"time"
-
-	"gorm.io/gorm"
 )
 
 type User struct {
@@ -15,7 +13,6 @@ type User struct {
 }
 
 type Transaction struct {
-	gorm.Model
 	ID         uint `gorm:"primaryKey"`
 	FromUserID uint
 	FromUser   *User `gorm:"foreignKey:FromUserID;references:ID"`
@@ -23,6 +20,11 @@ type Transaction struct {
 	ToUser     *User `gorm:"foreignKey:ToUserID;references:ID"`
 	Amount     int
 	CreatedAt  time.Time `gorm:"autoCreateTime"`
+}
+
+// Нужно чтобы избежать хардкодинга имени таблицы в методе internal/dao/transaction.go/GetHistoryByUserID
+func (Transaction) TableName() string {
+	return "transactions"
 }
 
 type Purchase struct {
