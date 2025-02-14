@@ -1,6 +1,8 @@
 package dao
 
 import (
+	"fmt"
+
 	"github.com/maksemen2/avito-task/internal/database"
 	"github.com/maksemen2/avito-task/internal/models"
 	"gorm.io/gorm"
@@ -18,20 +20,20 @@ func (dao *TransactionDAO) GetHistoryByUserID(userID uint) ([]models.ReceivedCoi
 	var received []models.ReceivedCoins
 	var sent []models.SentCoins
 
-	transactionTableName := database.Transaction{}.TableName() + " t"
+	transactionsTableName, usersTableName := database.Transaction{}.TableName(), database.User{}.TableName()
 
-	if err := dao.db.Table(transactionTableName).
-		Select("u.username as fromUser, t.amount").
-		Joins("JOIN users u ON u.id = t.from_user_id").
-		Where("t.to_user_id = ?", userID).
+	if err := dao.db.Debug().Table(transactionsTableName).
+		Select(fmt.Sprintf("%s.username as from_user, %s.amount", usersTableName, transactionsTableName)).
+		Joins(fmt.Sprintf("JOIN %s ON %s.from_user_id = %s.id", usersTableName, transactionsTableName, usersTableName)).
+		Where(fmt.Sprintf("%s.to_user_id = ?", transactionsTableName), userID).
 		Scan(&received).Error; err != nil {
 		return nil, nil, err
 	}
 
-	if err := dao.db.Table(transactionTableName).
-		Select("u.username as toUser, t.amount").
-		Joins("JOIN users u ON u.id = t.to_user_id").
-		Where("t.from_user_id = ?", userID).
+	if err := dao.db.Debug().Table(transactionsTableName).
+		Select(fmt.Sprintf("%s.username as to_user, %s.amount", usersTableName, transactionsTableName)).
+		Joins(fmt.Sprintf("JOIN %s ON %s.to_user_id = %s.id", usersTableName, transactionsTableName, usersTableName)).
+		Where(fmt.Sprintf("%s.from_user_id = ?", transactionsTableName), userID).
 		Scan(&sent).Error; err != nil {
 		return nil, nil, err
 	}
