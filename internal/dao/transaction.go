@@ -19,18 +19,25 @@ func (dao *TransactionDAO) GetHistoryByUserID(userID uint) ([]models.ReceivedCoi
 
 	if err := dao.db.Table("transactions t").
 		Select("u.username as fromUser, t.amount").
-		Joins("JOIN users u ON u.id = t.fromUserID").
-		Where("t.toUserID = ?", userID).
+		Joins("JOIN users u ON u.id = t.from_user_id").
+		Where("t.to_user_id = ?", userID).
 		Scan(&received).Error; err != nil {
 		return nil, nil, err
 	}
 
 	if err := dao.db.Table("transactions t").
 		Select("u.username as toUser, t.amount").
-		Joins("JOIN users u ON u.id = t.toUserID").
-		Where("t.fromUserID = ?", userID).
+		Joins("JOIN users u ON u.id = t.to_user_id").
+		Where("t.from_user_id = ?", userID).
 		Scan(&sent).Error; err != nil {
 		return nil, nil, err
+	}
+
+	if received == nil {
+		received = []models.ReceivedCoins{}
+	}
+	if sent == nil {
+		sent = []models.SentCoins{}
 	}
 
 	return received, sent, nil
