@@ -5,9 +5,9 @@ import (
 )
 
 type User struct {
-	ID           uint   `gorm:"primaryKey"`
-	Username     string `gorm:"unique"`
-	PasswordHash string
+	ID           uint      `gorm:"primaryKey"`
+	Username     string    `gorm:"uniqueIndex;size:255"`
+	PasswordHash string    `gorm:"type:char(60)"`
 	Coins        int       `gorm:"default:1000"`
 	CreatedAt    time.Time `gorm:"autoCreateTime"`
 }
