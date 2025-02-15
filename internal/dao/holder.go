@@ -48,14 +48,14 @@ func (dao *HolderDAO) TransferCoins(senderID, recieverID uint, amount int) error
 	return tx.Commit().Error
 }
 
-func (dao *HolderDAO) BuyItem(buyerID uint, goodName string) error {
+func (dao *HolderDAO) BuyItem(buyerID uint, goodName string, goodPrice int) error {
 	tx := dao.DB.Begin()
 	if tx.Error != nil {
 		return tx.Error
 	}
 
 	// Списываем монеты
-	if err := tx.Model(&database.User{}).Where("id = ?", buyerID).Update("coins", gorm.Expr("coins - ?", 100)).Error; err != nil {
+	if err := tx.Model(&database.User{}).Where("id = ?", buyerID).Update("coins", gorm.Expr("coins - ?", goodPrice)).Error; err != nil {
 		tx.Rollback()
 		return err
 	}

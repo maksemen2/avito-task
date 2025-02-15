@@ -154,7 +154,7 @@ func (h *RequestsHandler) BuyItem(c *gin.Context) {
 		return
 	}
 
-	if err := h.dao.BuyItem(userID, itemName); err != nil {
+	if err := h.dao.BuyItem(userID, itemName, price); err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{Errors: models.ErrIternal})
 		return
 	}
