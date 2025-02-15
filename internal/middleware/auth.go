@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/maksemen2/avito-shop/internal/auth"
 	"github.com/maksemen2/avito-shop/internal/models"
 )
@@ -29,19 +29,19 @@ func AuthMiddleware(jwtManager *auth.JWTManager) gin.HandlerFunc {
 			return
 		}
 
-		userIDFloat, ok := claims["userID"].(float64)
+		userIDFloat, ok := claims[auth.UserIDKey].(float64)
 		if !ok {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, models.ErrorResponse{Errors: models.ErrUnauthorized})
 			return
 		}
 
-		c.Set("UserID", uint(userIDFloat))
+		c.Set(auth.UserIDKey, uint(userIDFloat))
 		c.Next()
 	}
 }
 
 func GetUserID(c *gin.Context) (uint, bool) {
-	userID, ok := c.Get("UserID")
+	userID, ok := c.Get(auth.UserIDKey)
 	if !ok {
 		return 0, false
 	}

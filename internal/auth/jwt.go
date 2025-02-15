@@ -12,6 +12,8 @@ type JWTManager struct {
 	tokenDuration time.Duration
 }
 
+const UserIDKey = "userID"
+
 func NewJWTManager(config config.AuthConfig) *JWTManager {
 	return &JWTManager{
 		signingKey:    []byte(config.JwtKey),
@@ -23,7 +25,7 @@ func (m *JWTManager) GenerateToken(userID uint, username string) (string, error)
 	now := time.Now()
 	expireTime := now.Add(m.tokenDuration)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"userID":   userID,
+		UserIDKey:  userID,
 		"username": username,
 		"exp":      expireTime.Unix(),
 		"iat":      now.Unix(),
