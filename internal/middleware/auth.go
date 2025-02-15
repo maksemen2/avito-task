@@ -17,7 +17,9 @@ func AuthMiddleware(jwtManager *auth.JWTManager) gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, models.ErrorResponse{Errors: models.ErrUnauthorized})
 			return
 		}
+
 		tokenStr = strings.TrimPrefix(tokenStr, "Bearer ")
+
 		t, err := jwtManager.ParseToken(tokenStr)
 		if err != nil || !t.Valid {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, models.ErrorResponse{Errors: models.ErrUnauthorized})
