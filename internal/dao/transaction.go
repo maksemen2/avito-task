@@ -18,6 +18,7 @@ func NewTransactionDAO(db *gorm.DB) *TransactionDAO {
 
 func (dao *TransactionDAO) GetHistoryByUserID(userID uint) ([]models.ReceivedCoins, []models.SentCoins, error) {
 	var received []models.ReceivedCoins
+
 	var sent []models.SentCoins
 
 	transactionsTableName, usersTableName := database.Transaction{}.TableName(), database.User{}.TableName()
@@ -41,6 +42,7 @@ func (dao *TransactionDAO) GetHistoryByUserID(userID uint) ([]models.ReceivedCoi
 	if received == nil {
 		received = []models.ReceivedCoins{}
 	}
+
 	if sent == nil {
 		sent = []models.SentCoins{}
 	}

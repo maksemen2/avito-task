@@ -34,6 +34,7 @@ type Config struct {
 
 func MustLoad() *Config {
 	err := godotenv.Load()
+
 	if err != nil {
 		err = godotenv.Load(".env.dist")
 		if err != nil {
@@ -43,6 +44,7 @@ func MustLoad() *Config {
 
 	tokenLifetimeStr := os.Getenv("TOKEN_LIFETIME_HOURS")
 	tokenLifetime, err := strconv.Atoi(tokenLifetimeStr)
+
 	if err != nil {
 		tokenLifetime = 24
 	}

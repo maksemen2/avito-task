@@ -29,6 +29,7 @@ func (m *JWTManager) GenerateToken(userID uint, username string) (string, error)
 		"iat":      now.Unix(),
 		"nbf":      now.Unix(),
 	})
+
 	return token.SignedString(m.signingKey)
 }
 

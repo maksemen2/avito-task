@@ -21,6 +21,7 @@ func (dao *UserDAO) Create(username string, passwordHash string) (*database.User
 	if result := dao.DB.Create(user); result.Error != nil {
 		return nil, result.Error
 	}
+
 	return user, nil
 }
 
@@ -29,6 +30,7 @@ func (dao *UserDAO) GetByID(id uint) (*database.User, error) {
 	if result := dao.DB.First(&user, id); result.Error != nil {
 		return nil, result.Error
 	}
+
 	return &user, nil
 }
 
@@ -37,6 +39,7 @@ func (dao *UserDAO) GetByUsername(username string) (*database.User, error) {
 	if result := dao.DB.Where("username = ?", username).First(&user); result.Error != nil {
 		return nil, result.Error
 	}
+
 	return &user, nil
 }
 
@@ -47,6 +50,7 @@ func (dao *UserDAO) IsExists(username string) (bool, error) {
 		Count(&count).Error; err != nil {
 		return false, err
 	}
+
 	return count > 0, nil
 }
 
@@ -55,5 +59,6 @@ func (dao *UserDAO) GetBalance(id uint) (int, error) {
 	if result := dao.DB.Model(&database.User{}).Select("coins").Where("id = ?", id).Scan(&balance); result.Error != nil {
 		return 0, result.Error
 	}
+
 	return balance, nil
 }

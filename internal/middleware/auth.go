@@ -34,6 +34,7 @@ func AuthMiddleware(jwtManager *auth.JWTManager) gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, models.ErrorResponse{Errors: models.ErrUnauthorized})
 			return
 		}
+
 		c.Set("UserID", uint(userIDFloat))
 		c.Next()
 	}
@@ -44,5 +45,6 @@ func GetUserID(c *gin.Context) (uint, bool) {
 	if !ok {
 		return 0, false
 	}
+
 	return userID.(uint), true
 }

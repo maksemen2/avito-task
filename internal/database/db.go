@@ -12,5 +12,6 @@ func MustLoad(dsn string) *gorm.DB {
 	if err != nil {
 		panic(fmt.Sprintf("failed to connect to database: %v", err))
 	}
+
 	return db
 }

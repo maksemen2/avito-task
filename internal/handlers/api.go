@@ -15,6 +15,7 @@ func (h *RequestsHandler) Authenticate(c *gin.Context) {
 	var req models.AuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil || req.Username == "" || req.Password == "" {
 		c.AbortWithStatusJSON(http.StatusBadRequest, models.NewErrorResponse(models.ErrBadRequest, "username and password are required"))
+
 		return
 	}
 
@@ -23,18 +24,21 @@ func (h *RequestsHandler) Authenticate(c *gin.Context) {
 		passwordBytes, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{Errors: models.ErrIternal})
+
 			return
 		}
 
 		user, err = h.dao.User.Create(req.Username, string(passwordBytes))
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{Errors: models.ErrIternal})
+
 			return
 		}
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, models.NewErrorResponse(models.ErrUnauthorized, "invalid password"))
+
 		return
 	}
 
@@ -67,6 +71,7 @@ func (h *RequestsHandler) SendCoin(c *gin.Context) {
 		} else {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{Errors: models.ErrIternal})
 		}
+
 		return
 	}
 
@@ -87,6 +92,7 @@ func (h *RequestsHandler) SendCoin(c *gin.Context) {
 		} else {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{Errors: models.ErrIternal})
 		}
+
 		return
 	}
 
@@ -98,6 +104,8 @@ func (h *RequestsHandler) SendCoin(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+// nolint:gochecknoglobals
+// Да, использование глобальных переменных - не лучшая практика, однако она эта мапа используется только в методе BuyItem, и в задании не указано, что названия, цены и ассортимент товаров могут изменяться
 var goods = map[string]int{
 	"t-shirt":    80,
 	"cup":        20,
@@ -137,6 +145,7 @@ func (h *RequestsHandler) BuyItem(c *gin.Context) {
 		} else {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{Errors: models.ErrIternal})
 		}
+
 		return
 	}
 
@@ -167,6 +176,7 @@ func (h *RequestsHandler) GetInfo(c *gin.Context) {
 		} else {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, models.ErrorResponse{Errors: models.ErrIternal})
 		}
+
 		return
 	}
 

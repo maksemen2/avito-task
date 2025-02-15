@@ -23,8 +23,10 @@ func (dao *PurchaseDAO) GetInventoryByUserID(userID uint) ([]models.Item, error)
 		Scan(&items); result.Error != nil {
 		return nil, result.Error
 	}
+
 	if items == nil {
 		items = []models.Item{}
 	}
+
 	return items, nil
 }
