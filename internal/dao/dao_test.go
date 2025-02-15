@@ -11,10 +11,12 @@ import (
 	"gorm.io/gorm"
 )
 
-func setupDao(t *testing.T) *dao.HolderDAO {
+func setupDao() *dao.HolderDAO {
 	// Открываем in-memory SQLite базу для тестирования
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	log.Fatalf("failed to open database: %v", err)
+	if err != nil {
+		log.Fatalf("failed to open database: %v", err)
+	}
 
 	err = db.AutoMigrate(&database.User{}, &database.Purchase{}, &database.Transaction{})
 	log.Fatalf("failed to migrate database: %v", err)
@@ -23,13 +25,13 @@ func setupDao(t *testing.T) *dao.HolderDAO {
 }
 
 func TestTransferCoins(t *testing.T) {
-	dao := setupDao(t)
+	dao := setupDao()
 
 	// Создаем пользователей: отправитель и получатель
 	sender, err := dao.User.Create("sender", "12345678901234567890123456789012345678901234567890")
 	assert.NoError(t, err, "sender creation error")
 	receiver, err := dao.User.Create("receiver", "12345678901234567890123456789012345678901234567890")
-	assert.NoError(t, err, "reciever creation error")
+	assert.NoError(t, err, "receiver creation error")
 
 	// Проверяем начальный баланс
 	assert.Equal(t, 1000, sender.Coins, "initial balance of user should be 1000 coins")
@@ -71,7 +73,7 @@ func TestTransferCoins(t *testing.T) {
 }
 
 func TestBuyItem(t *testing.T) {
-	dao := setupDao(t)
+	dao := setupDao()
 
 	// Создаем пользователя
 	user, err := dao.User.Create("user", "12345678901234567890123456789012345678901234567890")
