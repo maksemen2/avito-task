@@ -9,7 +9,7 @@ services:
     environment:
       - DATABASE_HOST=db
       - DATABASE_PORT=5432
-      - DATABASE_USERNAME=postgres
+      - DATABASE_USERNAME=shop
       - DATABASE_PASSWORD=password
       - DATABASE_NAME=shop
       - JWT_SECRET=my_secret
@@ -24,13 +24,15 @@ services:
     image: postgres:13
     container_name: postgres
     environment:
-      POSTGRES_USER: postgres
+      POSTGRES_USER: shop
       POSTGRES_PASSWORD: password
       POSTGRES_DB: shop
+    volumes:
+      - ./migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "sh -c 'pg_isready -U postgres -d shop'"]
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U shop -d shop'"]
       interval: 5s
       timeout: 10s
       retries: 5
