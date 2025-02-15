@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/maksemen2/avito-task/internal/auth"
-	"github.com/maksemen2/avito-task/internal/models"
+	"github.com/maksemen2/avito-shop/internal/auth"
+	"github.com/maksemen2/avito-shop/internal/models"
 )
 
 func AuthMiddleware(jwtManager *auth.JWTManager) gin.HandlerFunc {

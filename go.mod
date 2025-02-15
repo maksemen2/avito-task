@@ -1,4 +1,4 @@
-module github.com/maksemen2/avito-task
+module github.com/maksemen2/avito-shop
 
 go 1.22.5
 

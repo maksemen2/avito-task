@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"github.com/maksemen2/avito-task/internal/auth"
-	"github.com/maksemen2/avito-task/internal/dao"
+	"github.com/maksemen2/avito-shop/internal/auth"
+	"github.com/maksemen2/avito-shop/internal/dao"
 	"gorm.io/gorm"
 )
 

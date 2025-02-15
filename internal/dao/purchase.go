@@ -1,8 +1,8 @@
 package dao
 
 import (
-	"github.com/maksemen2/avito-task/internal/database"
-	"github.com/maksemen2/avito-task/internal/models"
+	"github.com/maksemen2/avito-shop/internal/database"
+	"github.com/maksemen2/avito-shop/internal/models"
 	"gorm.io/gorm"
 )
 

@@ -2,8 +2,8 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/maksemen2/avito-task/internal/handlers"
-	"github.com/maksemen2/avito-task/internal/middleware"
+	"github.com/maksemen2/avito-shop/internal/handlers"
+	"github.com/maksemen2/avito-shop/internal/middleware"
 )
 
 func SetupRoutes(handler *handlers.RequestsHandler) *gin.Engine {

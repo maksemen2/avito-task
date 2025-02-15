@@ -4,7 +4,7 @@ import (
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v5"
-	"github.com/maksemen2/avito-task/config"
+	"github.com/maksemen2/avito-shop/config"
 )
 
 type JWTManager struct {

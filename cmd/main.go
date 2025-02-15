@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/maksemen2/avito-task/config"
-	"github.com/maksemen2/avito-task/internal/auth"
-	"github.com/maksemen2/avito-task/internal/database"
-	"github.com/maksemen2/avito-task/internal/handlers"
-	"github.com/maksemen2/avito-task/internal/routes"
+	"github.com/maksemen2/avito-shop/config"
+	"github.com/maksemen2/avito-shop/internal/auth"
+	"github.com/maksemen2/avito-shop/internal/database"
+	"github.com/maksemen2/avito-shop/internal/handlers"
+	"github.com/maksemen2/avito-shop/internal/routes"
 )
 
 func main() {

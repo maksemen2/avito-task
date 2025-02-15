@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/maksemen2/avito-task/internal/middleware"
-	"github.com/maksemen2/avito-task/internal/models"
+	"github.com/maksemen2/avito-shop/internal/middleware"
+	"github.com/maksemen2/avito-shop/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
 
