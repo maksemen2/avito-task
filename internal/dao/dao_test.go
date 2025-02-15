@@ -1,7 +1,7 @@
 package dao_test
 
 import (
-	"fmt"
+	"log"
 	"testing"
 
 	"github.com/maksemen2/avito-shop/internal/dao"
@@ -12,12 +12,12 @@ import (
 )
 
 func setupDao(t *testing.T) *dao.HolderDAO {
-	// Используем SQLite бд в оперативной памяти для тестов
+	// Открываем in-memory SQLite базу для тестирования
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	assert.NoError(t, err, "некорректное открытие тестовой БД")
+	log.Fatalf("failed to open database: %v", err)
 
 	err = db.AutoMigrate(&database.User{}, &database.Purchase{}, &database.Transaction{})
-	assert.NoError(t, err, "ошибка миграции тестовой БД")
+	log.Fatalf("failed to migrate database: %v", err)
 
 	return dao.NewHolderDAO(db)
 }
@@ -25,105 +25,113 @@ func setupDao(t *testing.T) *dao.HolderDAO {
 func TestTransferCoins(t *testing.T) {
 	dao := setupDao(t)
 
+	// Создаем пользователей: отправитель и получатель
 	sender, err := dao.User.Create("sender", "12345678901234567890123456789012345678901234567890")
-	assert.NoError(t, err, "пользователь должен быть создан успешно")
+	assert.NoError(t, err, "sender creation error")
 	receiver, err := dao.User.Create("receiver", "12345678901234567890123456789012345678901234567890")
-	assert.NoError(t, err, "пользователь должен быть создан успешно")
+	assert.NoError(t, err, "reciever creation error")
 
-	assert.Equal(t, 1000, sender.Coins, "значение по умолчанию должно автоматически подставиться")
-	assert.Equal(t, 1000, receiver.Coins, "значение по умолчанию должно автоматически подставиться")
+	// Проверяем начальный баланс
+	assert.Equal(t, 1000, sender.Coins, "initial balance of user should be 1000 coins")
+	assert.Equal(t, 1000, receiver.Coins, "initial balance of user should be 1000 coins")
 
-	assert.NoError(t, dao.TransferCoins(sender.ID, receiver.ID, 100), "перевод монет должен пройти успешно")
+	// Выполняем перевод 100 монет от отправителя к получателю
+	err = dao.TransferCoins(sender.ID, receiver.ID, 100)
+	assert.NoError(t, err, "error during coins transfer")
 
+	// Обновляем данные пользователей
 	sender, err = dao.User.GetByID(sender.ID)
-	assert.NoError(t, err, "пользователь должен быть получен успешно")
-
+	assert.NoError(t, err, "error getting sender")
 	receiver, err = dao.User.GetByID(receiver.ID)
-	assert.NoError(t, err, "пользователь должен быть получен успешно")
+	assert.NoError(t, err, "error getting receiver")
 
-	assert.Equal(t, 900, sender.Coins, "у отправителя должно стать на 100 монет меньше")
-	assert.Equal(t, 1100, receiver.Coins, "у получателя должно стать на 100 монет больше")
+	// Проверяем итоговый баланс
+	assert.Equal(t, 900, sender.Coins, "sender should have 100 coins less")
+	assert.Equal(t, 1100, receiver.Coins, "receiver should have 100 coins more")
 
-	// Проверяем, что запись о переводе создана и информация о входящих и исходящих переводах будет корректной
-
+	// Проверяем историю транзакций для отправителя
 	recievedCoins, sentCoins, err := dao.Transaction.GetHistoryByUserID(sender.ID)
-	fmt.Println(recievedCoins, sentCoins)
-	assert.NoError(t, err, "история переводов должна быть получена успешно")
-	assert.Len(t, recievedCoins, 0, "у отправителя не должно быть входящих переводов")
-	assert.Len(t, sentCoins, 1, "у отправителя должен быть один исходящий перевод")
-	sent := sentCoins[0]
-	assert.Equal(t, receiver.Username, sent.ToUser, "имя получателя должно совпадать с записью")
-	assert.Equal(t, 100, sent.Amount, "сумма перевода должна быть равна 100")
+	assert.NoError(t, err, "error getting sender's transaction history")
+	assert.Len(t, recievedCoins, 0, "sender should have no incoming transactions")
+	assert.Len(t, sentCoins, 1, "sender should have one outgoing transaction")
 
+	sent := sentCoins[0]
+	assert.Equal(t, receiver.Username, sent.ToUser, "receiver's name in sent transaction is incorrect")
+	assert.Equal(t, 100, sent.Amount, "transaction amount should be 100")
+
+	// Проверяем историю транзакций для получателя
 	recievedCoins, sentCoins, err = dao.Transaction.GetHistoryByUserID(receiver.ID)
-	assert.NoError(t, err, "история переводов должна быть получена успешно")
-	assert.Len(t, recievedCoins, 1, "у получателя должен быть один входящий перевод")
-	assert.Len(t, sentCoins, 0, "у получателя не должно быть исходящих переводов")
+	assert.NoError(t, err, "error getting receiver's transaction history")
+	assert.Len(t, recievedCoins, 1, "receiver should have one incoming transaction")
+	assert.Len(t, sentCoins, 0, "receiver should have no outgoing transactions")
 
 	received := recievedCoins[0]
-	assert.Equal(t, sender.Username, received.FromUser, "имя отправителя должно совпадать с записью")
-	assert.Equal(t, 100, received.Amount, "сумма перевода должна быть равна 100")
+	assert.Equal(t, sender.Username, received.FromUser, "sender's name in received transaction is incorrect")
+	assert.Equal(t, 100, received.Amount, "transaction amount should be 100")
 }
 
 func TestBuyItem(t *testing.T) {
 	dao := setupDao(t)
 
+	// Создаем пользователя
 	user, err := dao.User.Create("user", "12345678901234567890123456789012345678901234567890")
-	assert.NoError(t, err, "пользователь должен быть создан успешно")
+	assert.NoError(t, err, "failed to create user")
 
-	// Цена футболки - 80 монет
+	// Покупаем футболку за 80 монет
 	err = dao.BuyItem(user.ID, "t-shirt", 80)
-	assert.NoError(t, err, "покупка должна пройти успешно")
+	assert.NoError(t, err, "failed first t-shirt purchase")
 
+	// Проверяем инвентарь
 	inventory, err := dao.Purchase.GetInventoryByUserID(user.ID)
-	assert.NoError(t, err, "инвентарь должен быть получен успешно")
-
-	assert.Len(t, inventory, 1, "в инвентаре должна быть одна запись")
+	assert.NoError(t, err, "failed to get inventory")
+	assert.Len(t, inventory, 1, "expected one record in inventory")
 	item := inventory[0]
+	assert.Equal(t, "t-shirt", item.Type, "incorrect item type")
+	assert.Equal(t, 1, item.Quantity, "expected quantity to be 1")
 
-	assert.Equal(t, "t-shirt", item.Type, "имя товара должно совпадать с записью")
-	assert.Equal(t, 1, item.Quantity, "количество товара должно быть равно 1")
-
+	// Проверяем баланс пользователя
 	user, err = dao.User.GetByID(user.ID)
+	assert.NoError(t, err, "failed to get user")
+	assert.Equal(t, 920, user.Coins, "user's balance should decrease by 80 coins")
 
-	assert.NoError(t, err, "пользователь должен быть получен успешно")
-	assert.Equal(t, 920, user.Coins, "у пользователя должно стать на 80 монет меньше")
-
-	// Купим еще одну футболку
+	// Покупаем вторую футболку
 	err = dao.BuyItem(user.ID, "t-shirt", 80)
-	assert.NoError(t, err, "покупка должна пройти успешно")
+	assert.NoError(t, err, "failed second t-shirt purchase")
 
+	// Проверяем инвентарь после второй покупки
 	inventory, err = dao.Purchase.GetInventoryByUserID(user.ID)
-	assert.NoError(t, err, "инвентарь должен быть получен успешно")
-
-	assert.Len(t, inventory, 1, "в инвентаре должна остаться одна запись")
+	assert.NoError(t, err, "failed to get inventory after second purchase")
+	assert.Len(t, inventory, 1, "expected one record in inventory")
 	item = inventory[0]
+	assert.Equal(t, "t-shirt", item.Type, "incorrect item type")
+	assert.Equal(t, 2, item.Quantity, "expected t-shirt quantity to be 2")
 
-	assert.Equal(t, "t-shirt", item.Type, "имя товара должно совпадать с записью")
-	assert.Equal(t, 2, item.Quantity, "количество товара должно быть равно 2")
-
+	// Проверяем баланс после второй покупки
 	user, err = dao.User.GetByID(user.ID)
-	assert.NoError(t, err, "пользователь должен быть получен успешно")
-	assert.Equal(t, 840, user.Coins, "у пользователя должно стать на 80 монет меньше")
+	assert.NoError(t, err, "failed to get user after second purchase")
+	assert.Equal(t, 840, user.Coins, "balance should further decrease by 80 coins")
 
-	// Купим еще пауер-банк ценой 200 монет
+	// Покупаем пауер банк за 200 монет
 	err = dao.BuyItem(user.ID, "powerbank", 200)
-	assert.NoError(t, err, "покупка должна пройти успешно")
-	inventory, err = dao.Purchase.GetInventoryByUserID(user.ID)
-	assert.NoError(t, err, "инвентарь должен быть получен успешно")
-	assert.Len(t, inventory, 2, "в инвентаре должно быть две записи")
+	assert.NoError(t, err, "failed to buy powerbank")
 
-	for _, item := range inventory {
-		if item.Type == "powerbank" {
-			assert.Equal(t, 1, item.Quantity, "количество пауер-банков должно быть равно 1")
-		} else if item.Type == "t-shirt" {
-			assert.Equal(t, 2, item.Quantity, "количество футболок должно быть равно 2")
+	// Проверяем инвентарь после покупки пауер банка
+	inventory, err = dao.Purchase.GetInventoryByUserID(user.ID)
+	assert.NoError(t, err, "failed to get inventory after powerbank purchase")
+	assert.Len(t, inventory, 2, "expected inventory to have two entries")
+
+	// Проверяем каждую запись инвентаря
+	for _, i := range inventory {
+		switch i.Type {
+		case "powerbank":
+			assert.Equal(t, 1, i.Quantity, "expected powerbank quantity to be 1")
+		case "t-shirt":
+			assert.Equal(t, 2, i.Quantity, "expected t-shirt quantity to be 2")
 		}
 	}
 
+	// Получаем конечный баланс
 	user, err = dao.User.GetByID(user.ID)
-
-	assert.NoError(t, err, "пользователь должен быть получен успешно")
-
-	assert.Equal(t, 640, user.Coins, "у пользователя должно стать еще на 200 монет меньше")
+	assert.NoError(t, err, "failed to get final state of user")
+	assert.Equal(t, 640, user.Coins, "final user balance is incorrect")
 }
