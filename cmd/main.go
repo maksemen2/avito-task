@@ -10,7 +10,7 @@ import (
 
 func main() {
 	config := config.MustLoad()
-	jwtManager := auth.NewJWTManager(config.Auth)
+	jwtManager := auth.NewJWTManager(config.Auth.JwtKey, config.Auth.TokenLifetimeHours)
 	db := database.MustLoad(config.Database.DSN())
 	requestsHandler := handlers.NewRequestsHandler(db, jwtManager)
 	router := routes.SetupRoutes(requestsHandler)

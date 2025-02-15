@@ -4,7 +4,6 @@ import (
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v5"
-	"github.com/maksemen2/avito-shop/config"
 )
 
 type JWTManager struct {
@@ -14,10 +13,10 @@ type JWTManager struct {
 
 const UserIDKey = "userID"
 
-func NewJWTManager(config config.AuthConfig) *JWTManager {
+func NewJWTManager(signingKey string, tokenDuration int) *JWTManager {
 	return &JWTManager{
-		signingKey:    []byte(config.JwtKey),
-		tokenDuration: time.Duration(config.TokenLifetimeHours) * time.Hour,
+		signingKey:    []byte(signingKey),
+		tokenDuration: time.Duration(tokenDuration) * time.Hour,
 	}
 }
 
