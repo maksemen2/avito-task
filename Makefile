@@ -13,3 +13,11 @@ clean:
 migration:
 	go run cmd/migration/main.go
 
+deploy:
+	docker compose up --build
+
+lint:
+	golangci-lint run
+
+lint-fix:
+	golangci-lint run --fix
