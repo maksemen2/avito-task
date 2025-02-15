@@ -18,6 +18,7 @@ func setupDao(t *testing.T) *dao.HolderDAO {
 
 	err = db.AutoMigrate(&database.User{}, &database.Purchase{}, &database.Transaction{})
 	assert.NoError(t, err, "ошибка миграции тестовой БД")
+
 	return dao.NewHolderDAO(db)
 }
 
@@ -26,22 +27,22 @@ func TestTransferCoins(t *testing.T) {
 
 	sender, err := dao.User.Create("sender", "12345678901234567890123456789012345678901234567890")
 	assert.NoError(t, err, "пользователь должен быть создан успешно")
-	reciever, err := dao.User.Create("reciever", "12345678901234567890123456789012345678901234567890")
+	receiver, err := dao.User.Create("receiver", "12345678901234567890123456789012345678901234567890")
 	assert.NoError(t, err, "пользователь должен быть создан успешно")
 
 	assert.Equal(t, 1000, sender.Coins, "значение по умолчанию должно автоматически подставиться")
-	assert.Equal(t, 1000, reciever.Coins, "значение по умолчанию должно автоматически подставиться")
+	assert.Equal(t, 1000, receiver.Coins, "значение по умолчанию должно автоматически подставиться")
 
-	assert.NoError(t, dao.TransferCoins(sender.ID, reciever.ID, 100), "перевод монет должен пройти успешно")
+	assert.NoError(t, dao.TransferCoins(sender.ID, receiver.ID, 100), "перевод монет должен пройти успешно")
 
 	sender, err = dao.User.GetByID(sender.ID)
 	assert.NoError(t, err, "пользователь должен быть получен успешно")
 
-	reciever, err = dao.User.GetByID(reciever.ID)
+	receiver, err = dao.User.GetByID(receiver.ID)
 	assert.NoError(t, err, "пользователь должен быть получен успешно")
 
 	assert.Equal(t, 900, sender.Coins, "у отправителя должно стать на 100 монет меньше")
-	assert.Equal(t, 1100, reciever.Coins, "у получателя должно стать на 100 монет больше")
+	assert.Equal(t, 1100, receiver.Coins, "у получателя должно стать на 100 монет больше")
 
 	// Проверяем, что запись о переводе создана и информация о входящих и исходящих переводах будет корректной
 
@@ -51,16 +52,17 @@ func TestTransferCoins(t *testing.T) {
 	assert.Len(t, recievedCoins, 0, "у отправителя не должно быть входящих переводов")
 	assert.Len(t, sentCoins, 1, "у отправителя должен быть один исходящий перевод")
 	sent := sentCoins[0]
-	assert.Equal(t, reciever.Username, sent.ToUser, "имя получателя должно совпадать с записью")
+	assert.Equal(t, receiver.Username, sent.ToUser, "имя получателя должно совпадать с записью")
 	assert.Equal(t, 100, sent.Amount, "сумма перевода должна быть равна 100")
 
-	recievedCoins, sentCoins, err = dao.Transaction.GetHistoryByUserID(reciever.ID)
+	recievedCoins, sentCoins, err = dao.Transaction.GetHistoryByUserID(receiver.ID)
 	assert.NoError(t, err, "история переводов должна быть получена успешно")
 	assert.Len(t, recievedCoins, 1, "у получателя должен быть один входящий перевод")
 	assert.Len(t, sentCoins, 0, "у получателя не должно быть исходящих переводов")
-	recieved := recievedCoins[0]
-	assert.Equal(t, sender.Username, recieved.FromUser, "имя отправителя должно совпадать с записью")
-	assert.Equal(t, 100, recieved.Amount, "сумма перевода должна быть равна 100")
+
+	received := recievedCoins[0]
+	assert.Equal(t, sender.Username, received.FromUser, "имя отправителя должно совпадать с записью")
+	assert.Equal(t, 100, received.Amount, "сумма перевода должна быть равна 100")
 }
 
 func TestBuyItem(t *testing.T) {
@@ -81,6 +83,7 @@ func TestBuyItem(t *testing.T) {
 
 	assert.Equal(t, "t-shirt", item.Type, "имя товара должно совпадать с записью")
 	assert.Equal(t, 1, item.Quantity, "количество товара должно быть равно 1")
+
 	user, err = dao.User.GetByID(user.ID)
 
 	assert.NoError(t, err, "пользователь должен быть получен успешно")
@@ -109,6 +112,7 @@ func TestBuyItem(t *testing.T) {
 	inventory, err = dao.Purchase.GetInventoryByUserID(user.ID)
 	assert.NoError(t, err, "инвентарь должен быть получен успешно")
 	assert.Len(t, inventory, 2, "в инвентаре должно быть две записи")
+
 	for _, item := range inventory {
 		if item.Type == "powerbank" {
 			assert.Equal(t, 1, item.Quantity, "количество пауер-банков должно быть равно 1")
