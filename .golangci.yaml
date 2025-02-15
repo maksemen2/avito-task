@@ -12,7 +12,7 @@ linters:
     - misspell
     - nakedret
     - rowserrcheck
-    - exportloopref
+    - copyloopvar
     - stylecheck
     - unconvert
     - whitespace
