@@ -12,8 +12,18 @@ services:
       - DATABASE_USERNAME=shop
       - DATABASE_PASSWORD=password
       - DATABASE_NAME=shop
+      - DATABASE_MAX_CONNECTIONS=100
+      - DATABASE_MAX_IDLE_CONNECTIONS=10
+      - DATABASE_MAX_CONNECTIONS_LIFETIME_MINUTES=5
       - JWT_SECRET=my_secret
       - TOKEN_LIFETIME_HOURS=72
+      - CORS_ALLOWED_ORIGINS=*
+      - CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE
+      - CORS_ALLOWED_HEADERS=Content-Type,Authorization
+      - CORS_ALLOW_CREDENTIALS=true
+      - CORS_MAX_AGE=86400
+      - LOG_LEVEL=info
+      - LOG_FILE=logs/app.log
     depends_on:
       db:
         condition: service_healthy
