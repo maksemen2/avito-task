@@ -55,7 +55,7 @@ type Config struct {
 func LoadEnv() error {
 	if err := godotenv.Load(); err != nil {
 		if err := godotenv.Load(".env.dist"); err != nil {
-			return fmt.Errorf("ошибка загрузки файлов окружения: %v", err)
+			return fmt.Errorf("failed to load env files: %v", err)
 		}
 	}
 
@@ -65,17 +65,17 @@ func LoadEnv() error {
 func LoadDatabaseConfig() (DatabaseConfig, error) {
 	maxConnections, err := strconv.Atoi(os.Getenv("DATABASE_MAX_CONNECTIONS"))
 	if err != nil {
-		return DatabaseConfig{}, fmt.Errorf("ошибка преобразования DATABASE_MAX_CONNECTIONS: %v", err)
+		return DatabaseConfig{}, fmt.Errorf("error converting DATABASE_MAX_CONNECTIONS: %v", err)
 	}
 
 	maxIdleConnections, err := strconv.Atoi(os.Getenv("DATABASE_MAX_IDLE_CONNECTIONS"))
 	if err != nil {
-		return DatabaseConfig{}, fmt.Errorf("ошибка преобразования DATABASE_MAX_IDLE_CONNECTIONS: %v", err)
+		return DatabaseConfig{}, fmt.Errorf("error converting DATABASE_MAX_IDLE_CONNECTIONS: %v", err)
 	}
 
 	maxConnectionsLifetimeMinutes, err := strconv.Atoi(os.Getenv("DATABASE_MAX_CONNECTIONS_LIFETIME_MINUTES"))
 	if err != nil {
-		return DatabaseConfig{}, fmt.Errorf("ошибка преобразования DATABASE_MAX_CONNECTIONS_LIFETIME_MINUTES: %v", err)
+		return DatabaseConfig{}, fmt.Errorf("error converting DATABASE_MAX_CONNECTIONS_LIFETIME_MINUTES: %v", err)
 	}
 
 	return DatabaseConfig{
@@ -127,17 +127,17 @@ func LoadLoggerConfig() LoggerConfig {
 // LoadDatabaseConfig загружает конфигурацию базы данных из переменных окружения.
 func MustLoad() *Config {
 	if err := LoadEnv(); err != nil {
-		log.Fatalf("Ошибка загрузки окружения: %v", err)
+		log.Fatalf("Error loading environment: %v", err)
 	}
 
 	dbConfig, err := LoadDatabaseConfig()
 	if err != nil {
-		log.Fatalf("Ошибка загрузки конфигурации базы данных: %v", err)
+		log.Fatalf("Error loading database config: %v", err)
 	}
 
 	authConfig, err := LoadAuthConfig()
 	if err != nil {
-		log.Fatalf("Ошибка загрузки конфигурации аутентификации: %v", err)
+		log.Fatalf("Error loading auth config: %v", err)
 	}
 
 	return &Config{
