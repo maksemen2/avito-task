@@ -1,10 +1,11 @@
 package models
 
+import "fmt"
+
 const (
-	// Ошибки
 	ErrBadRequest   = "bad request"
 	ErrUnauthorized = "unauthorized"
-	ErrIternal      = "internal server error"
+	ErrInternal     = "internal server error"
 )
 
 // Модель для ответа с ошибкой
@@ -12,8 +13,14 @@ type ErrorResponse struct {
 	Errors string `json:"errors"`
 }
 
-func NewErrorResponse(title, details string) ErrorResponse {
+func NewErrorResponse(errMsg string) ErrorResponse {
 	return ErrorResponse{
-		Errors: title + ": " + details,
+		Errors: errMsg,
+	}
+}
+
+func NewDetailedErrorResponse(errMsg, details string) ErrorResponse {
+	return ErrorResponse{
+		Errors: fmt.Sprintf("%s: %s", errMsg, details),
 	}
 }
