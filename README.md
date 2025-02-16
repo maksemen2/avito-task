@@ -12,7 +12,7 @@
 1. Клонировать репозиторий:
    ```bash
    git clone https://github.com/maksemen2/avito-task.git
-   cd avito-shop
+   cd avito-task
    ```
 2. Запустить сервисы:
    ```bash
