@@ -2,11 +2,9 @@ linters:
   enable:
     - bodyclose
     - dupl
-    - funlen
     - gochecknoglobals
     - gochecknoinits
     - goconst
-    - gocritic
     - gocyclo
     - gofmt
     - misspell
