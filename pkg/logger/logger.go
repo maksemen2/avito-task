@@ -35,12 +35,12 @@ func MustLoad(loggerConfig config.LoggerConfig) *zap.Logger {
 	if loggerConfig.FilePath != "" {
 		dir := filepath.Dir(loggerConfig.FilePath)
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-			log.Fatalf("failed to create log directory: %w", err)
+			log.Fatalf("failed to create log directory: %s", err.Error())
 		}
 
 		file, err := os.Create(loggerConfig.FilePath)
 		if err != nil {
-			log.Fatalf("failed to create log file: %w", err)
+			log.Fatalf("failed to create log file: %s", err.Error())
 		}
 
 		fileEncoder := zapcore.NewJSONEncoder(cfg.EncoderConfig)
