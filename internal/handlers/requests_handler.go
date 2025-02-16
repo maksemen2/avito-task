@@ -1,20 +1,33 @@
 package handlers
 
 import (
-	"github.com/maksemen2/avito-shop/internal/auth"
-	"github.com/maksemen2/avito-shop/internal/dao"
+	"github.com/maksemen2/avito-shop/internal/repository"
+	"github.com/maksemen2/avito-shop/internal/services"
+	"github.com/maksemen2/avito-shop/pkg/auth"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type RequestsHandler struct {
-	dao        *dao.HolderDAO
-	JWTManager *auth.JWTManager
-	logger     *zap.Logger
+	JWTManager      *auth.JWTManager
+	authService     services.AuthService
+	transferService services.TransferService
+	purchaseService services.PurchaseService
+	infoService     services.InfoService
+	logger          *zap.Logger
 }
 
 // NewRequestsHandler создаёт новый экземпляр RequestsHandler.
 // Эта структура нужна для инъекции зависимостей в хендлеры.
 func NewRequestsHandler(db *gorm.DB, jwtManager *auth.JWTManager, logger *zap.Logger) *RequestsHandler {
-	return &RequestsHandler{dao: dao.NewHolderDAO(db), JWTManager: jwtManager, logger: logger}
+	repository := repository.NewHolderRepository(db, logger)
+
+	return &RequestsHandler{
+		JWTManager:      jwtManager,
+		logger:          logger,
+		authService:     services.NewAuthService(repository, jwtManager, logger),
+		transferService: services.NewTransferService(repository, logger),
+		purchaseService: services.NewPurchaseService(repository, logger),
+		infoService:     services.NewInfoService(repository, logger),
+	}
 }
