@@ -19,8 +19,5 @@ lint:
 lint-fix:
 	golangci-lint run --fix
 
-unit-tests:
-	go test -v --cover ./internal/dao
-
-e2e-tests:
-	go test -v --cover ./internal/handlers
+tests:
+	go test -v --cover ./internal/services/... ./internal/repository/... ./internal/handlers/...

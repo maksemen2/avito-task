@@ -16,7 +16,7 @@ func SetupRoutes(handler *handlers.RequestsHandler, logger *zap.Logger, corsConf
 	router.HandleMethodNotAllowed = true
 
 	apiGroup := router.Group("/api")
-
+	apiGroup.Use(middleware.JSONMiddleware())
 	apiGroup.Use(middleware.CorsMiddleware(corsConfig))
 	apiGroup.Use(middleware.LoggerMiddleware(logger))
 

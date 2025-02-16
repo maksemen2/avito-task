@@ -12,7 +12,10 @@ type JWTManager struct {
 	tokenDuration time.Duration
 }
 
-const UserIDKey = "userID"
+const (
+	UserIDKey   = "userID"
+	UsernameKey = "username"
+)
 
 // NewJWTManager создает новый экземпляр JWTManager.
 // signingKey - ключ для подписи токена.

@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	jwt "github.com/golang-jwt/jwt/v5"
-	"github.com/maksemen2/avito-shop/internal/auth"
 	"github.com/maksemen2/avito-shop/internal/models"
+	"github.com/maksemen2/avito-shop/pkg/auth"
 	"go.uber.org/zap"
 )
 
@@ -37,9 +37,11 @@ func AuthMiddleware(logger *zap.Logger, jwtManager *auth.JWTManager) gin.Handler
 			return
 		}
 
-		userIDFloat, ok := claims[auth.UserIDKey].(float64)
-		if !ok {
-			logger.Warn("Malformed user ID in token",
+		userIDFloat, userIDExists := claims[auth.UserIDKey].(float64)
+		username, usernameExists := claims[auth.UsernameKey].(string)
+
+		if !userIDExists || !usernameExists {
+			logger.Warn("Malformed token",
 				zap.Any("claims", claims),
 				zap.String("ip addr", c.ClientIP()))
 			c.AbortWithStatusJSON(http.StatusUnauthorized, models.ErrorResponse{Errors: models.ErrUnauthorized})
@@ -48,6 +50,7 @@ func AuthMiddleware(logger *zap.Logger, jwtManager *auth.JWTManager) gin.Handler
 		}
 
 		c.Set(auth.UserIDKey, uint(userIDFloat))
+		c.Set(auth.UsernameKey, username)
 		c.Next()
 	}
 }
@@ -59,4 +62,13 @@ func GetUserID(c *gin.Context) (uint, bool) {
 	}
 
 	return userID.(uint), true
+}
+
+func GetUsername(c *gin.Context) (string, bool) {
+	username, ok := c.Get(auth.UsernameKey)
+	if !ok {
+		return "", false
+	}
+
+	return username.(string), true
 }

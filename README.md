@@ -53,17 +53,11 @@ make e2e-tests  # Запуск E2E тестов
 
 **Запуск тестов:**
 ```bash
-# Юнит-тесты
-make unit-tests
+make tests
 
 # Или
-go test -v --cover ./internal/dao
 
-# E2E тесты
-make e2e-tests
-
-# Или
-go test -v ./internal/handlers
+go test -v --cover ./internal/services/... ./internal/repository/... ./internal/handlers/...
 ```
 
 ## Нагрузочное тестирование

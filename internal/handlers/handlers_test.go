@@ -10,13 +10,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/maksemen2/avito-shop/config"
-	"github.com/maksemen2/avito-shop/internal/auth"
 	"github.com/maksemen2/avito-shop/internal/database"
 	"github.com/maksemen2/avito-shop/internal/handlers"
 	"github.com/maksemen2/avito-shop/internal/models"
 	"github.com/maksemen2/avito-shop/internal/routes"
-	"github.com/maksemen2/avito-shop/pkg/logger"
+	"github.com/maksemen2/avito-shop/pkg/auth"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	gormLogger "gorm.io/gorm/logger"
@@ -58,15 +58,10 @@ func setupTest(t *testing.T) *gin.Engine {
 		db.Create(&database.Good{Type: k, Price: v})
 	}
 
-	mockLoggerConfig := config.LoggerConfig{
-		Level:    "fatal",
-		FilePath: "",
-	}
-
-	logger := logger.MustLoad(mockLoggerConfig)
+	logger := zap.NewNop()
 
 	reqHandler := handlers.NewRequestsHandler(db, jwtManager, logger)
-	router := routes.SetupRoutes(reqHandler, logger, config.CorsConfig{})
+	router := routes.SetupRoutes(reqHandler, logger, config.CorsConfig{AllowedOrigins: "*", AllowedMethods: "*", AllowedHeaders: "*", AllowCredientals: "true", MaxAge: "86300"})
 
 	return router
 }
@@ -86,29 +81,70 @@ func registerUser(t *testing.T, router *gin.Engine, username string) string {
 	return resp.Token
 }
 
+func getInfo(t *testing.T, router *gin.Engine, token string) models.InfoResponse {
+	req := httptest.NewRequest(http.MethodGet, "/api/info", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, req)
+
+	var info models.InfoResponse
+	err := json.NewDecoder(recorder.Body).Decode(&info)
+	assert.NoError(t, err, "failed decoding info response")
+
+	return info
+}
+
+func buyItem(router *gin.Engine, itemType string, token string) (int, models.ErrorResponse) {
+	req := httptest.NewRequest(http.MethodGet, "/api/buy/"+itemType, nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, req)
+
+	var errResp models.ErrorResponse
+
+	if recorder.Code != http.StatusOK {
+		err := json.NewDecoder(recorder.Body).Decode(&errResp)
+		if err != nil {
+			return recorder.Code, models.ErrorResponse{}
+		}
+	}
+
+	return recorder.Code, errResp
+}
+
+func transferCoins(router *gin.Engine, receiverUsername string, token string) (int, models.ErrorResponse) {
+	payload := fmt.Sprintf(`{"toUser": "%s", "amount": 100}`, receiverUsername)
+	req := httptest.NewRequest(http.MethodPost, "/api/sendCoin", bytes.NewBufferString(payload))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, req)
+
+	var errResp models.ErrorResponse
+
+	if recorder.Code != http.StatusOK {
+		err := json.NewDecoder(recorder.Body).Decode(&errResp)
+		if err != nil {
+			return recorder.Code, models.ErrorResponse{}
+		}
+	}
+
+	return recorder.Code, errResp
+}
+
 func TestE2EBuyMerch(t *testing.T) {
 	router := setupTest(t)
 	token := registerUser(t, router, "testUser")
 
 	// Покупаем футболку
-	req := httptest.NewRequest(http.MethodGet, "/api/buy/t-shirt", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	recorder := httptest.NewRecorder()
-	router.ServeHTTP(recorder, req)
-	assert.Equal(t, http.StatusOK, recorder.Code, "expected OK response for t-shirt purchase")
+	code, _ := buyItem(router, "t-shirt", token)
+	assert.Equal(t, http.StatusOK, code, "expected OK response for t-shirt purchase")
 
 	// Получаем информацию о пользователе
-	req = httptest.NewRequest(http.MethodGet, "/api/info", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	recorder = httptest.NewRecorder()
-	router.ServeHTTP(recorder, req)
-	assert.Equal(t, http.StatusOK, recorder.Code, "expected OK response for info request")
-
-	var info models.InfoResponse
-	err := json.NewDecoder(recorder.Body).Decode(&info)
-	assert.NoError(t, err, "failed decoding info response")
+	info := getInfo(t, router, token)
 	assert.Len(t, info.Inventory, 1, "expected one purchase entry")
 	assert.Equal(t, 920, info.Coins, "expected coin balance to be 920 after purchase")
 }
@@ -119,38 +155,19 @@ func TestE2EBuyMerchWithNoCoins(t *testing.T) {
 
 	// Покупаем футболку 12 раз
 	for i := 0; i < 12; i++ {
-		req := httptest.NewRequest(http.MethodGet, "/api/buy/t-shirt", nil)
-		req.Header.Set("Authorization", "Bearer "+token)
+		code, _ := buyItem(router, "t-shirt", token)
 
-		recorder := httptest.NewRecorder()
-		router.ServeHTTP(recorder, req)
-		assert.Equal(t, http.StatusOK, recorder.Code, "expected OK response for purchase #%d", i+1)
+		assert.Equal(t, http.StatusOK, code, "expected OK response for purchase #%d", i+1)
 	}
 
 	// 13-я покупка должна завершиться ошибкой (недостаточно монет)
-	req := httptest.NewRequest(http.MethodGet, "/api/buy/t-shirt", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
+	code, errResp := buyItem(router, "t-shirt", token)
+	assert.Equal(t, http.StatusBadRequest, code, "expected BadRequest due to insufficient coins")
 
-	recorder := httptest.NewRecorder()
-	router.ServeHTTP(recorder, req)
-	assert.Equal(t, http.StatusBadRequest, recorder.Code, "expected BadRequest due to insufficient coins")
-
-	var errResp models.ErrorResponse
-	err := json.NewDecoder(recorder.Body).Decode(&errResp)
-	assert.NoError(t, err, "failed decoding error response")
 	assert.Contains(t, errResp.Errors, "insufficient", "expected error about insufficient coins")
 
 	// Проверяем инвентарь пользователя
-	req = httptest.NewRequest(http.MethodGet, "/api/info", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	recorder = httptest.NewRecorder()
-	router.ServeHTTP(recorder, req)
-	assert.Equal(t, http.StatusOK, recorder.Code, "expected OK response for info request")
-
-	var info models.InfoResponse
-	err = json.NewDecoder(recorder.Body).Decode(&info)
-	assert.NoError(t, err, "failed decoding info response")
+	info := getInfo(t, router, token)
 	assert.Len(t, info.Inventory, 1, "expected one type of item in inventory")
 	item := info.Inventory[0]
 	assert.Equal(t, "t-shirt", item.Type, "expected item type t-shirt")
@@ -167,27 +184,12 @@ func TestTransferCoins(t *testing.T) {
 
 	// Банк переводит 100 монет каждому из получателей
 	for _, recipient := range []string{"receiverOne", "receiverTwo"} {
-		payload := fmt.Sprintf(`{"toUser": "%s", "amount": 100}`, recipient)
-		req := httptest.NewRequest(http.MethodPost, "/api/sendCoin", bytes.NewBufferString(payload))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Bearer "+bankToken)
-
-		recorder := httptest.NewRecorder()
-		router.ServeHTTP(recorder, req)
-		assert.Equal(t, http.StatusOK, recorder.Code, "expected OK response when sending coins to %s", recipient)
+		code, _ := transferCoins(router, recipient, bankToken)
+		assert.Equal(t, http.StatusOK, code, "expected OK response when sending coins to %s", recipient)
 	}
 
 	// Проверяем баланс банка
-	req := httptest.NewRequest(http.MethodGet, "/api/info", nil)
-	req.Header.Set("Authorization", "Bearer "+bankToken)
-
-	recorder := httptest.NewRecorder()
-	router.ServeHTTP(recorder, req)
-	assert.Equal(t, http.StatusOK, recorder.Code, "expected OK response for bank info request")
-
-	var info models.InfoResponse
-	err := json.NewDecoder(recorder.Body).Decode(&info)
-	assert.NoError(t, err, "failed decoding bank info response")
+	info := getInfo(t, router, bankToken)
 	assert.Equal(t, 800, info.Coins, "expected bank coin balance to be 800 after transfers")
 	assert.Len(t, info.CoinHistory.Sent, 2, "expected two sent entries in coin history")
 
@@ -198,40 +200,18 @@ func TestTransferCoins(t *testing.T) {
 
 	// Проверяем баланс получателей
 	for _, token := range []string{receiverOneToken, receiverTwoToken} {
-		req = httptest.NewRequest(http.MethodGet, "/api/info", nil)
-		req.Header.Set("Authorization", "Bearer "+token)
-
-		recorder = httptest.NewRecorder()
-		router.ServeHTTP(recorder, req)
-		assert.Equal(t, http.StatusOK, recorder.Code, "expected OK response for recipient info request")
-
-		err = json.NewDecoder(recorder.Body).Decode(&info)
-		assert.NoError(t, err, "failed decoding recipient info response")
+		info := getInfo(t, router, token)
 		assert.Equal(t, 1100, info.Coins, "expected recipient coin balance to be 1100 after receiving coins")
 		assert.Len(t, info.CoinHistory.Received, 1, "expected one received entry in coin history")
 		assert.Equal(t, "bank", info.CoinHistory.Received[0].FromUser, "expected sender in received history to be bank")
 	}
 
 	// Первый получатель переводит 100 монет обратно банку
-	payload := `{"toUser": "bank", "amount": 100}`
-	req = httptest.NewRequest(http.MethodPost, "/api/sendCoin", bytes.NewBufferString(payload))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+receiverOneToken)
-
-	recorder = httptest.NewRecorder()
-	router.ServeHTTP(recorder, req)
-	assert.Equal(t, http.StatusOK, recorder.Code, "expected OK response for transfer back to bank")
+	code, _ := transferCoins(router, "bank", receiverOneToken)
+	assert.Equal(t, http.StatusOK, code, "expected OK response for transfer back to bank")
 
 	// Проверяем баланс банка после получения монет
-	req = httptest.NewRequest(http.MethodGet, "/api/info", nil)
-	req.Header.Set("Authorization", "Bearer "+bankToken)
-
-	recorder = httptest.NewRecorder()
-	router.ServeHTTP(recorder, req)
-	assert.Equal(t, http.StatusOK, recorder.Code, "expected OK response for bank info request after receipt")
-
-	err = json.NewDecoder(recorder.Body).Decode(&info)
-	assert.NoError(t, err, "failed decoding bank info response after receipt")
+	info = getInfo(t, router, bankToken)
 	assert.Equal(t, 900, info.Coins, "expected bank coin balance to be 900 after receiving coins")
 	assert.Len(t, info.CoinHistory.Sent, 2, "expected two sent entries to remain")
 	assert.Len(t, info.CoinHistory.Received, 1, "expected one received entry in bank coin history")
