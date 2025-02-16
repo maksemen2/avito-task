@@ -36,6 +36,8 @@ func main() {
 		}
 	}()
 
+	logger.Info("Server is running on http://localhost:8080")
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
