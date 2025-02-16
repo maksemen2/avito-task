@@ -10,9 +10,6 @@ clean:
 	go clean
 	rm ${EXECUTABLE_NAME}
 
-migration:
-	go run cmd/migration/main.go
-
 deploy:
 	docker compose up --build
 
@@ -21,3 +18,9 @@ lint:
 
 lint-fix:
 	golangci-lint run --fix
+
+unit-tests:
+	go test -v --cover ./internal/dao
+
+e2e-tests:
+	go test -v --cover ./internal/handlers
