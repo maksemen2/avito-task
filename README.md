@@ -31,8 +31,7 @@ make lint-fix   # Автоисправление стиля
 make build      # Сборка проекта
 make run        # Локальный запуск
 make deploy     # Запуск в Docker
-make unit-tests # Запуск юнит-тестов
-make e2e-tests  # Запуск E2E тестов
+make tests      # Запуск тестов
 ```
 
 ## Стек
@@ -59,6 +58,9 @@ make tests
 
 go test -v --cover ./internal/services/... ./internal/repository/... ./internal/handlers/...
 ```
+
+1. Покрытие кода тестами выше 40%
+2. Написаны E2E тесты всех сценариев, которые я смог придумать
 
 ## Нагрузочное тестирование
 
