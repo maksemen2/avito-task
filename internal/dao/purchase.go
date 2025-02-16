@@ -1,6 +1,8 @@
 package dao
 
 import (
+	"fmt"
+
 	"github.com/maksemen2/avito-shop/internal/database"
 	"github.com/maksemen2/avito-shop/internal/models"
 	"gorm.io/gorm"
@@ -14,18 +16,25 @@ func NewPurchaseDAO(db *gorm.DB) *PurchaseDAO {
 	return &PurchaseDAO{DB: db}
 }
 
+// GetInventoryByUserID возвращает инвентарь пользователя в виде json модели Item по его айди.
 func (dao *PurchaseDAO) GetInventoryByUserID(userID uint) ([]models.Item, error) {
 	var items []models.Item
-	if result := dao.DB.Model(&database.Purchase{}).
-		Select("item_name as type, COUNT(*) as quantity").
-		Where("user_id = ?", userID).
-		Group("item_name").
-		Scan(&items); result.Error != nil {
-		return nil, result.Error
+
+	err := dao.DB.
+		Model(&database.Purchase{}).
+		Select("goods.type as type, COUNT(purchases.id) as quantity").
+		Joins("LEFT JOIN goods ON goods.id = purchases.good_id").
+		Where("purchases.user_id = ?", userID).
+		Group("goods.type").
+		Order("goods.type ASC").
+		Scan(&items).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get inventory: %w", err)
 	}
 
 	if items == nil {
-		items = []models.Item{}
+		return []models.Item{}, nil
 	}
 
 	return items, nil

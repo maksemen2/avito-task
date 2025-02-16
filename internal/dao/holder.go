@@ -1,6 +1,8 @@
 package dao
 
 import (
+	"fmt"
+
 	"github.com/maksemen2/avito-shop/internal/database"
 	"gorm.io/gorm"
 )
@@ -10,6 +12,7 @@ type HolderDAO struct {
 	User        *UserDAO
 	Purchase    *PurchaseDAO
 	Transaction *TransactionDAO
+	Good        *GoodDAO
 }
 
 func NewHolderDAO(db *gorm.DB) *HolderDAO {
@@ -18,53 +21,79 @@ func NewHolderDAO(db *gorm.DB) *HolderDAO {
 		User:        NewUserDAO(db),
 		Purchase:    NewPurchaseDAO(db),
 		Transaction: NewTransactionDAO(db),
+		Good:        NewGoodDAO(db),
 	}
 }
 
-func (dao *HolderDAO) TransferCoins(senderID, recieverID uint, amount int) error {
-	tx := dao.DB.Begin()
-	if tx.Error != nil {
-		return tx.Error
-	}
+// TransferCoins переводит монеты от одного пользователя к другому.
+func (dao *HolderDAO) TransferCoins(senderID, receiverID uint, amount int) error {
+	return dao.DB.Transaction(func(tx *gorm.DB) error {
+		// Списываем баланс с дополнительной проверкой на его наличие
+		res := tx.Model(&database.User{}).
+			Where("id = ? AND coins >= ?", senderID, amount).
+			UpdateColumn("coins", gorm.Expr("coins - ?", amount))
 
-	// Вычитаем монеты у отправителя
-	if err := tx.Model(&database.User{}).Where("id = ?", senderID).Update("coins", gorm.Expr("coins - ?", amount)).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
+		if res.Error != nil {
+			return res.Error
+		}
 
-	// Добавляем получателю
-	if err := tx.Model(&database.User{}).Where("id = ?", recieverID).Update("coins", gorm.Expr("coins + ?", amount)).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
+		if res.RowsAffected == 0 {
+			return ErrInsufficientFunds // Проверка на существование пользователя проводится в хендлере, соответственно ошибка точно связана с отсутствием средств
+		}
 
-	// Создаем запись о переводе монет
-	if err := tx.Create(&database.Transaction{FromUserID: senderID, ToUserID: recieverID, Amount: amount}).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
+		// Начисляем баланс получателю
+		res = tx.Model(&database.User{}).
+			Where("id = ?", receiverID).
+			UpdateColumn("coins", gorm.Expr("coins + ?", amount))
 
-	return tx.Commit().Error
+		if res.Error != nil {
+			return res.Error
+		}
+
+		if res.RowsAffected == 0 {
+			return ErrUserNotFound
+		}
+
+		// Создаем запись о переводе
+		if err := tx.Create(&database.Transaction{
+			FromUserID: senderID,
+			ToUserID:   receiverID,
+			Amount:     amount,
+		}).Error; err != nil {
+			return fmt.Errorf("failed to create transaction: %w", err)
+		}
+
+		return nil
+	})
 }
 
-func (dao *HolderDAO) BuyItem(buyerID uint, goodName string, goodPrice int) error {
-	tx := dao.DB.Begin()
-	if tx.Error != nil {
-		return tx.Error
-	}
+// BuyItem произовдит покупку товара пользователем.
+func (dao *HolderDAO) BuyItem(buyerID uint, goodID uint, goodPrice int) error {
+	return dao.DB.Transaction(func(tx *gorm.DB) error {
+		// Списываем деньги и на редкий случай в котором количество монет на балансе изменилось в промежуток времени между проверкой в хендлере
+		// и выполнением в этой транзакции выполняем проверку еще раз
+		res := tx.Model(&database.User{}).
+			Where("id = ? AND coins >= ?", buyerID, goodPrice).
+			UpdateColumn("coins", gorm.Expr("coins - ?", goodPrice)) // Вряд ли цена товара изменится, да и функционала такого в проекте нет, поэтому можно себе позволить использовать уже полученную в хендлере цену
 
-	// Списываем монеты
-	if err := tx.Model(&database.User{}).Where("id = ?", buyerID).Update("coins", gorm.Expr("coins - ?", goodPrice)).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
+		if res.Error != nil {
+			return res.Error
+		}
 
-	// Создаем запись о покупке
-	if err := tx.Create(&database.Purchase{UserID: buyerID, ItemName: goodName}).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
+		if res.RowsAffected == 0 {
+			// Проверка на существование пользователя проводится в хендлере, соответственно, если ни одна запись не была
+			// изменена - мы можем быть уверены, что дело в недостатке средств
+			return ErrInsufficientFunds
+		}
 
-	return tx.Commit().Error
+		// Создаем запись о покупке
+		if err := tx.Create(&database.Purchase{
+			UserID: buyerID,
+			GoodID: goodID,
+		}).Error; err != nil {
+			return fmt.Errorf("failed to create purchase: %w", err)
+		}
+
+		return nil
+	})
 }

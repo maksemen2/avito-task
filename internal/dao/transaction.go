@@ -1,9 +1,6 @@
 package dao
 
 import (
-	"fmt"
-
-	"github.com/maksemen2/avito-shop/internal/database"
 	"github.com/maksemen2/avito-shop/internal/models"
 	"gorm.io/gorm"
 )
@@ -16,35 +13,38 @@ func NewTransactionDAO(db *gorm.DB) *TransactionDAO {
 	return &TransactionDAO{db: db}
 }
 
+// GetHistoryByUserID возвращает историю входящих и исходящих транзакций пользователя по его айди.
 func (dao *TransactionDAO) GetHistoryByUserID(userID uint) ([]models.ReceivedCoins, []models.SentCoins, error) {
 	var received []models.ReceivedCoins
 
 	var sent []models.SentCoins
 
-	transactionsTableName, usersTableName := database.Transaction{}.TableName(), database.User{}.TableName()
-
-	if err := dao.db.Debug().Table(transactionsTableName).
-		Select(fmt.Sprintf("%s.username as from_user, %s.amount", usersTableName, transactionsTableName)).
-		Joins(fmt.Sprintf("JOIN %s ON %s.from_user_id = %s.id", usersTableName, transactionsTableName, usersTableName)).
-		Where(fmt.Sprintf("%s.to_user_id = ?", transactionsTableName), userID).
+	// Полученные средства
+	if err := dao.db.Table("transactions").
+		Select("users.username as from_user, transactions.amount, transactions.created_at").
+		Joins("JOIN users ON transactions.from_user_id = users.id").
+		Where("transactions.to_user_id = ?", userID).
+		Order("transactions.created_at DESC").
 		Scan(&received).Error; err != nil {
 		return nil, nil, err
 	}
 
-	if err := dao.db.Debug().Table(transactionsTableName).
-		Select(fmt.Sprintf("%s.username as to_user, %s.amount", usersTableName, transactionsTableName)).
-		Joins(fmt.Sprintf("JOIN %s ON %s.to_user_id = %s.id", usersTableName, transactionsTableName, usersTableName)).
-		Where(fmt.Sprintf("%s.from_user_id = ?", transactionsTableName), userID).
+	// Отправленные средства
+	if err := dao.db.Table("transactions").
+		Select("users.username as to_user, transactions.amount, transactions.created_at").
+		Joins("JOIN users ON transactions.to_user_id = users.id").
+		Where("transactions.from_user_id = ?", userID).
+		Order("transactions.created_at DESC").
 		Scan(&sent).Error; err != nil {
 		return nil, nil, err
 	}
 
 	if received == nil {
-		received = []models.ReceivedCoins{}
+		received = make([]models.ReceivedCoins, 0)
 	}
 
 	if sent == nil {
-		sent = []models.SentCoins{}
+		sent = make([]models.SentCoins, 0)
 	}
 
 	return received, sent, nil
