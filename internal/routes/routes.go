@@ -11,6 +11,7 @@ import (
 // SetupRoutes настраивает маршруты приложения, устанавливает мидлвари и группирует роутеры.
 // Возвращает готовый к запуску роутер.
 func SetupRoutes(handler *handlers.RequestsHandler, logger *zap.Logger, corsConfig config.CorsConfig) *gin.Engine {
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.HandleMethodNotAllowed = true
 
