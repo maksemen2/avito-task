@@ -8,9 +8,10 @@ import (
 	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/maksemen2/avito-shop/internal/auth"
 	"github.com/maksemen2/avito-shop/internal/models"
+	"go.uber.org/zap"
 )
 
-func AuthMiddleware(jwtManager *auth.JWTManager) gin.HandlerFunc {
+func AuthMiddleware(logger *zap.Logger, jwtManager *auth.JWTManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenStr := c.GetHeader("Authorization")
 		if tokenStr == "" {
@@ -28,13 +29,21 @@ func AuthMiddleware(jwtManager *auth.JWTManager) gin.HandlerFunc {
 
 		claims, ok := t.Claims.(jwt.MapClaims)
 		if !ok {
+			logger.Warn("Invalid token structure",
+				zap.String("ip addr", c.ClientIP()),
+				zap.String("token", tokenStr))
 			c.AbortWithStatusJSON(http.StatusUnauthorized, models.ErrorResponse{Errors: models.ErrUnauthorized})
+
 			return
 		}
 
 		userIDFloat, ok := claims[auth.UserIDKey].(float64)
 		if !ok {
+			logger.Warn("Malformed user ID in token",
+				zap.Any("claims", claims),
+				zap.String("ip addr", c.ClientIP()))
 			c.AbortWithStatusJSON(http.StatusUnauthorized, models.ErrorResponse{Errors: models.ErrUnauthorized})
+
 			return
 		}
 
