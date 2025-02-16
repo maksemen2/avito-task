@@ -9,32 +9,64 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/maksemen2/avito-shop/config"
 	"github.com/maksemen2/avito-shop/internal/auth"
 	"github.com/maksemen2/avito-shop/internal/database"
 	"github.com/maksemen2/avito-shop/internal/handlers"
 	"github.com/maksemen2/avito-shop/internal/models"
 	"github.com/maksemen2/avito-shop/internal/routes"
+	"github.com/maksemen2/avito-shop/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	gormLogger "gorm.io/gorm/logger"
 )
 
 func setupTest(t *testing.T) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
-	jwtManager := auth.NewJWTManager("verySecretKey", 72)
+	mockAuthConfig := config.AuthConfig{
+		JwtKey:             "verySecretKey",
+		TokenLifetimeHours: 72,
+	}
 
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	jwtManager := auth.NewJWTManager(mockAuthConfig)
+
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{Logger: gormLogger.Default.LogMode(gormLogger.Silent)})
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
 
-	if err = db.AutoMigrate(&database.User{}, &database.Purchase{}, &database.Transaction{}); err != nil {
+	if err = db.AutoMigrate(&database.User{}, &database.Purchase{}, &database.Transaction{}, &database.Good{}); err != nil {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
 
-	reqHandler := handlers.NewRequestsHandler(db, jwtManager)
-	router := routes.SetupRoutes(reqHandler)
+	goods := map[string]int{
+		"t-shirt":    80,
+		"cup":        20,
+		"book":       50,
+		"pen":        20,
+		"powerbank":  200,
+		"hoody":      300,
+		"umbrella":   200,
+		"socks":      10,
+		"wallet":     50,
+		"pink-hoody": 500,
+	}
+
+	for k, v := range goods {
+		db.Create(&database.Good{Type: k, Price: v})
+	}
+
+	mockLoggerConfig := config.LoggerConfig{
+		Level:    "fatal",
+		FilePath: "",
+	}
+
+	logger := logger.MustLoad(mockLoggerConfig)
+
+	reqHandler := handlers.NewRequestsHandler(db, jwtManager, logger)
+	router := routes.SetupRoutes(reqHandler, logger, config.CorsConfig{})
 
 	return router
 }
@@ -54,7 +86,7 @@ func registerUser(t *testing.T, router *gin.Engine, username string) string {
 	return resp.Token
 }
 
-func TestBuyMerch(t *testing.T) {
+func TestE2EBuyMerch(t *testing.T) {
 	router := setupTest(t)
 	token := registerUser(t, router, "testUser")
 
@@ -81,7 +113,7 @@ func TestBuyMerch(t *testing.T) {
 	assert.Equal(t, 920, info.Coins, "expected coin balance to be 920 after purchase")
 }
 
-func TestBuyMerchWithNoCoins(t *testing.T) {
+func TestE2EBuyMerchWithNoCoins(t *testing.T) {
 	router := setupTest(t)
 	token := registerUser(t, router, "testUser")
 
@@ -106,7 +138,7 @@ func TestBuyMerchWithNoCoins(t *testing.T) {
 	var errResp models.ErrorResponse
 	err := json.NewDecoder(recorder.Body).Decode(&errResp)
 	assert.NoError(t, err, "failed decoding error response")
-	assert.Contains(t, errResp.Errors, "not enough coins", "expected error about insufficient coins")
+	assert.Contains(t, errResp.Errors, "insufficient", "expected error about insufficient coins")
 
 	// Проверяем инвентарь пользователя
 	req = httptest.NewRequest(http.MethodGet, "/api/info", nil)
@@ -125,17 +157,16 @@ func TestBuyMerchWithNoCoins(t *testing.T) {
 	assert.Equal(t, 12, item.Quantity, "expected quantity to be 12")
 }
 
-// nolint:funlen
 func TestTransferCoins(t *testing.T) {
 	router := setupTest(t)
 
 	// Создаем пользователей
 	bankToken := registerUser(t, router, "bank")
-	recieverOneToken := registerUser(t, router, "recieverOne")
-	recieverTwoToken := registerUser(t, router, "recieverTwo")
+	receiverOneToken := registerUser(t, router, "receiverOne")
+	receiverTwoToken := registerUser(t, router, "receiverTwo")
 
 	// Банк переводит 100 монет каждому из получателей
-	for _, recipient := range []string{"recieverOne", "recieverTwo"} {
+	for _, recipient := range []string{"receiverOne", "receiverTwo"} {
 		payload := fmt.Sprintf(`{"toUser": "%s", "amount": 100}`, recipient)
 		req := httptest.NewRequest(http.MethodPost, "/api/sendCoin", bytes.NewBufferString(payload))
 		req.Header.Set("Content-Type", "application/json")
@@ -162,11 +193,11 @@ func TestTransferCoins(t *testing.T) {
 
 	for _, sent := range info.CoinHistory.Sent {
 		assert.Equal(t, 100, sent.Amount, "expected transfer amount to be 100")
-		assert.Contains(t, []string{"recieverOne", "recieverTwo"}, sent.ToUser, "unexpected recipient in coin history")
+		assert.Contains(t, []string{"receiverOne", "receiverTwo"}, sent.ToUser, "unexpected recipient in coin history")
 	}
 
 	// Проверяем баланс получателей
-	for _, token := range []string{recieverOneToken, recieverTwoToken} {
+	for _, token := range []string{receiverOneToken, receiverTwoToken} {
 		req = httptest.NewRequest(http.MethodGet, "/api/info", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 
@@ -185,7 +216,7 @@ func TestTransferCoins(t *testing.T) {
 	payload := `{"toUser": "bank", "amount": 100}`
 	req = httptest.NewRequest(http.MethodPost, "/api/sendCoin", bytes.NewBufferString(payload))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+recieverOneToken)
+	req.Header.Set("Authorization", "Bearer "+receiverOneToken)
 
 	recorder = httptest.NewRecorder()
 	router.ServeHTTP(recorder, req)
@@ -204,5 +235,5 @@ func TestTransferCoins(t *testing.T) {
 	assert.Equal(t, 900, info.Coins, "expected bank coin balance to be 900 after receiving coins")
 	assert.Len(t, info.CoinHistory.Sent, 2, "expected two sent entries to remain")
 	assert.Len(t, info.CoinHistory.Received, 1, "expected one received entry in bank coin history")
-	assert.Equal(t, "recieverOne", info.CoinHistory.Received[0].FromUser, "expected sender of returned coins to be recieverOne")
+	assert.Equal(t, "receiverOne", info.CoinHistory.Received[0].FromUser, "expected sender of returned coins to be receiverOne")
 }

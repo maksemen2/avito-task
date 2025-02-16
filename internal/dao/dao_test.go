@@ -1,7 +1,6 @@
 package dao_test
 
 import (
-	"log"
 	"testing"
 
 	"github.com/maksemen2/avito-shop/internal/dao"
@@ -9,23 +8,42 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	gormLogger "gorm.io/gorm/logger"
 )
 
-func setupDao() *dao.HolderDAO {
-	// Открываем in-memory SQLite базу для тестирования
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+func setupDao(t *testing.T) *dao.HolderDAO {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{Logger: gormLogger.Default.LogMode(gormLogger.Silent)})
 	if err != nil {
-		log.Fatalf("failed to open database: %v", err)
+		t.Fatalf("failed to open database: %v", err)
 	}
 
-	err = db.AutoMigrate(&database.User{}, &database.Purchase{}, &database.Transaction{})
-	log.Fatalf("failed to migrate database: %v", err)
+	err = db.AutoMigrate(&database.User{}, &database.Purchase{}, &database.Transaction{}, &database.Good{})
+	if err != nil {
+		t.Fatalf("failed to migrate database: %v", err)
+	}
+
+	goods := map[string]int{
+		"t-shirt":    80,
+		"cup":        20,
+		"book":       50,
+		"pen":        20,
+		"powerbank":  200,
+		"hoody":      300,
+		"umbrella":   200,
+		"socks":      10,
+		"wallet":     50,
+		"pink-hoody": 500,
+	}
+
+	for k, v := range goods {
+		db.Create(&database.Good{Type: k, Price: v})
+	}
 
 	return dao.NewHolderDAO(db)
 }
 
 func TestTransferCoins(t *testing.T) {
-	dao := setupDao()
+	dao := setupDao(t)
 
 	// Создаем пользователей: отправитель и получатель
 	sender, err := dao.User.Create("sender", "12345678901234567890123456789012345678901234567890")
@@ -73,14 +91,17 @@ func TestTransferCoins(t *testing.T) {
 }
 
 func TestBuyItem(t *testing.T) {
-	dao := setupDao()
+	dao := setupDao(t)
 
 	// Создаем пользователя
 	user, err := dao.User.Create("user", "12345678901234567890123456789012345678901234567890")
 	assert.NoError(t, err, "failed to create user")
 
 	// Покупаем футболку за 80 монет
-	err = dao.BuyItem(user.ID, "t-shirt", 80)
+	tshirt, err := dao.Good.GetByName("t-shirt")
+	assert.NoError(t, err, "failed to get tshirt")
+
+	err = dao.BuyItem(user.ID, tshirt.ID, tshirt.Price)
 	assert.NoError(t, err, "failed first t-shirt purchase")
 
 	// Проверяем инвентарь
@@ -94,10 +115,10 @@ func TestBuyItem(t *testing.T) {
 	// Проверяем баланс пользователя
 	user, err = dao.User.GetByID(user.ID)
 	assert.NoError(t, err, "failed to get user")
-	assert.Equal(t, 920, user.Coins, "user's balance should decrease by 80 coins")
+	assert.Equal(t, 1000-tshirt.Price, user.Coins, "user's balance should decrease by 80 coins")
 
 	// Покупаем вторую футболку
-	err = dao.BuyItem(user.ID, "t-shirt", 80)
+	err = dao.BuyItem(user.ID, tshirt.ID, tshirt.Price)
 	assert.NoError(t, err, "failed second t-shirt purchase")
 
 	// Проверяем инвентарь после второй покупки
@@ -111,10 +132,12 @@ func TestBuyItem(t *testing.T) {
 	// Проверяем баланс после второй покупки
 	user, err = dao.User.GetByID(user.ID)
 	assert.NoError(t, err, "failed to get user after second purchase")
-	assert.Equal(t, 840, user.Coins, "balance should further decrease by 80 coins")
+	assert.Equal(t, 1000-tshirt.Price*2, user.Coins, "balance should further decrease by 80 coins")
 
+	powerbank, err := dao.Good.GetByName("powerbank")
+	assert.NoError(t, err, "failed to get powerbank")
 	// Покупаем пауер банк за 200 монет
-	err = dao.BuyItem(user.ID, "powerbank", 200)
+	err = dao.BuyItem(user.ID, powerbank.ID, powerbank.Price)
 	assert.NoError(t, err, "failed to buy powerbank")
 
 	// Проверяем инвентарь после покупки пауер банка
@@ -135,5 +158,5 @@ func TestBuyItem(t *testing.T) {
 	// Получаем конечный баланс
 	user, err = dao.User.GetByID(user.ID)
 	assert.NoError(t, err, "failed to get final state of user")
-	assert.Equal(t, 640, user.Coins, "final user balance is incorrect")
+	assert.Equal(t, 1000-tshirt.Price*2-powerbank.Price, user.Coins, "final user balance is incorrect")
 }
