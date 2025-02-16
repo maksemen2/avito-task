@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/maksemen2/avito-shop/config"
-	"github.com/maksemen2/avito-shop/internal/auth"
 	"github.com/maksemen2/avito-shop/internal/database"
 	"github.com/maksemen2/avito-shop/internal/handlers"
 	"github.com/maksemen2/avito-shop/internal/routes"
+	"github.com/maksemen2/avito-shop/pkg/auth"
 	"github.com/maksemen2/avito-shop/pkg/logger"
 	"go.uber.org/zap"
 )
