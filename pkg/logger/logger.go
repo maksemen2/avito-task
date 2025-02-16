@@ -10,6 +10,17 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+func newZapCore(encoderType string, writer zapcore.WriteSyncer, cfg zapcore.EncoderConfig, level zapcore.Level) zapcore.Core {
+	var encoder zapcore.Encoder
+	if encoderType == "json" {
+		encoder = zapcore.NewJSONEncoder(cfg)
+	} else {
+		encoder = zapcore.NewConsoleEncoder(cfg)
+	}
+
+	return zapcore.NewCore(encoder, writer, level)
+}
+
 // MustLoad инициализирует логгер с указанным в конфиге уровнем логирования.
 // Если указан LoggerConfig.FilePath - логи будут дублироваться в файл по указанному пути.
 // Создает необходимые директории для файла логов.
@@ -24,12 +35,9 @@ func MustLoad(loggerConfig config.LoggerConfig) *zap.Logger {
 	cfg := zap.NewProductionConfig()
 	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 
-	consoleEncoder := zapcore.NewConsoleEncoder(cfg.EncoderConfig)
-	consoleWriter := zapcore.AddSync(os.Stdout)
-
 	cores := []zapcore.Core{}
 
-	consoleCore := zapcore.NewCore(consoleEncoder, consoleWriter, level)
+	consoleCore := newZapCore("console", zapcore.AddSync(os.Stdout), cfg.EncoderConfig, level)
 	cores = append(cores, consoleCore)
 
 	if loggerConfig.FilePath != "" {
@@ -43,9 +51,7 @@ func MustLoad(loggerConfig config.LoggerConfig) *zap.Logger {
 			log.Fatalf("failed to create log file: %s", err.Error())
 		}
 
-		fileEncoder := zapcore.NewJSONEncoder(cfg.EncoderConfig)
-		fileWriter := zapcore.AddSync(file)
-		fileCore := zapcore.NewCore(fileEncoder, fileWriter, level)
+		fileCore := newZapCore("json", zapcore.AddSync(file), cfg.EncoderConfig, level)
 		cores = append(cores, fileCore)
 	}
 
