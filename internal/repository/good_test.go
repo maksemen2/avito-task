@@ -1,4 +1,3 @@
-// language: go
 package repository_test
 
 import (
@@ -15,8 +14,6 @@ import (
 	gormLogger "gorm.io/gorm/logger"
 )
 
-// setupTestRepository creates an in-memory database, migrates the schema,
-// and returns a GoodRepository for testing.
 func setupTestRepository(t *testing.T) (repository.GoodRepository, *gorm.DB) {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
 		Logger: gormLogger.Default.LogMode(gormLogger.Silent),
@@ -29,7 +26,6 @@ func setupTestRepository(t *testing.T) (repository.GoodRepository, *gorm.DB) {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
 
-	// Use a no-op logger for tests.
 	logger := zap.NewNop()
 
 	repo := repository.NewGoodRepository(db, logger)
@@ -40,7 +36,6 @@ func setupTestRepository(t *testing.T) (repository.GoodRepository, *gorm.DB) {
 func TestGetByName_Success(t *testing.T) {
 	repo, db := setupTestRepository(t)
 
-	// Insert sample good.
 	expectedGood := database.Good{
 		Type:  "t-shirt",
 		Price: 80,
@@ -48,7 +43,6 @@ func TestGetByName_Success(t *testing.T) {
 	err := db.Create(&expectedGood).Error
 	assert.NoError(t, err, "failed to create sample good")
 
-	// Retrieve by name.
 	got, err := repo.GetByName(context.Background(), "t-shirt")
 	assert.NoError(t, err, "expected no error when retrieving existing good")
 	assert.NotNil(t, got, "expected a good to be returned")
@@ -59,7 +53,6 @@ func TestGetByName_Success(t *testing.T) {
 func TestGetByName_NotFound(t *testing.T) {
 	repo, _ := setupTestRepository(t)
 
-	// Try to retrieve a non-existing good.
 	got, err := repo.GetByName(context.Background(), "non-existing")
 	assert.Nil(t, got, "expected nil result for non-existing good")
 	assert.True(t, errors.Is(err, repository.ErrGoodNotFound), "expected error to be ErrGoodNotFound")

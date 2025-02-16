@@ -1,4 +1,3 @@
-// language: go
 package repository_test
 
 import (
@@ -14,8 +13,6 @@ import (
 	gormLogger "gorm.io/gorm/logger"
 )
 
-// setupTestPurchaseRepository sets up an in-memory database, migrates schema for Good and Purchase,
-// and returns a PurchaseRepository and the DB instance.
 func setupTestPurchaseRepository(t *testing.T) (repository.PurchaseRepository, *gorm.DB) {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
 		Logger: gormLogger.Default.LogMode(gormLogger.Silent),
@@ -24,7 +21,6 @@ func setupTestPurchaseRepository(t *testing.T) (repository.PurchaseRepository, *
 		t.Fatalf("failed to open in-memory database: %v", err)
 	}
 
-	// Auto migrate Good and Purchase models.
 	if err := db.AutoMigrate(&database.User{}, &database.Purchase{}, &database.Transaction{}, &database.Good{}); err != nil {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
@@ -35,12 +31,10 @@ func setupTestPurchaseRepository(t *testing.T) (repository.PurchaseRepository, *
 	return purchaseRepo, db
 }
 
-// TestGetInventoryByUserID_Success verifies that the correct inventory items are returned for a given user.
 func TestGetInventoryByUserID_Success(t *testing.T) {
 	repo, db := setupTestPurchaseRepository(t)
 	ctx := context.Background()
 
-	// Insert a sample Good.
 	good := database.Good{
 		Type:  "t-shirt",
 		Price: 80,
@@ -48,10 +42,8 @@ func TestGetInventoryByUserID_Success(t *testing.T) {
 	err := db.Create(&good).Error
 	assert.NoError(t, err, "failed to create sample good")
 
-	// Define user ID.
 	userID := uint(1)
 
-	// Insert two purchases for the same good and user.
 	purchase1 := database.Purchase{
 		UserID: userID,
 		GoodID: good.ID,
@@ -65,24 +57,20 @@ func TestGetInventoryByUserID_Success(t *testing.T) {
 	err = db.Create(&purchase2).Error
 	assert.NoError(t, err, "failed to create purchase2")
 
-	// Retrieve inventory.
 	items, err := repo.GetInventoryByUserID(ctx, userID)
 	assert.NoError(t, err, "expected no error retrieving inventory")
 	assert.NotNil(t, items, "expected non-nil items slice")
 	assert.Equal(t, 1, len(items), "expected one item type in inventory")
 
-	// Validate the returned item.
 	item := items[0]
 	assert.Equal(t, "t-shirt", item.Type, "expected good type to match")
 	assert.Equal(t, 2, item.Quantity, "expected quantity to be aggregated")
 }
 
-// TestGetInventoryByUserID_Empty verifies that an empty inventory is returned when there are no purchases.
 func TestGetInventoryByUserID_Empty(t *testing.T) {
 	repo, _ := setupTestPurchaseRepository(t)
 	ctx := context.Background()
 
-	// Use a userID without purchases.
 	userID := uint(999)
 	items, err := repo.GetInventoryByUserID(ctx, userID)
 	assert.NoError(t, err, "expected no error retrieving empty inventory")

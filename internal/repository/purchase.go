@@ -9,12 +9,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// PurchaseRepository описывает операции для покупок.
 type PurchaseRepository interface {
 	GetInventoryByUserID(ctx context.Context, userID uint) ([]models.Item, error)
 }
 
-// GormPurchaseRepository реализует PurchaseRepository.
 type GormPurchaseRepository struct {
 	BaseRepository
 }

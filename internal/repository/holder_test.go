@@ -1,4 +1,3 @@
-// language: go
 package repository_test
 
 import (
@@ -23,7 +22,6 @@ func setupTestHolderRepository(t *testing.T) (repository.HolderRepository, *gorm
 		t.Fatalf("failed to open in-memory database: %v", err)
 	}
 
-	// Auto migrate necessary models.
 	if err := db.AutoMigrate(&database.User{}, &database.Purchase{}, &database.Transaction{}, &database.Good{}); err != nil {
 		t.Fatalf("failed to migrate database: %v", err)
 	}

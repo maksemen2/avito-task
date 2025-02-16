@@ -1,4 +1,3 @@
-// language: go
 package repository_test
 
 import (
@@ -14,8 +13,6 @@ import (
 	gormLogger "gorm.io/gorm/logger"
 )
 
-// setupTestUserRepository sets up an in-memory database, migrates the User model,
-// and returns a UserRepository and the DB instance.
 func setupTestUserRepository(t *testing.T) (repository.UserRepository, *gorm.DB) {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
 		Logger: gormLogger.Default.LogMode(gormLogger.Silent),
@@ -24,7 +21,6 @@ func setupTestUserRepository(t *testing.T) (repository.UserRepository, *gorm.DB)
 		t.Fatalf("failed to open in-memory database: %v", err)
 	}
 
-	// AutoMigrate the User model.
 	if err := db.AutoMigrate(&database.User{}, &database.Purchase{}, &database.Transaction{}, &database.Good{}); err != nil {
 		t.Fatalf("failed to migrate User model: %v", err)
 	}
@@ -39,7 +35,6 @@ func TestCreate_Success(t *testing.T) {
 	userRepo, _ := setupTestUserRepository(t)
 	ctx := context.Background()
 
-	// Create a sample user.
 	user, err := userRepo.Create(ctx, "testuser", "hashedpassword")
 	assert.NoError(t, err, "expected no error creating user")
 	assert.Equal(t, user.Username, "testuser", "expected username to match")
@@ -48,12 +43,10 @@ func TestCreate_Success(t *testing.T) {
 	assert.Equal(t, user.Coins, 1000, "expected user to start with 1000 coins")
 }
 
-// TestGetIDByUsername_Success tests that GetIDByUsername successfully retrieves the user ID.
 func TestGetIDByUsername_Success(t *testing.T) {
 	userRepo, db := setupTestUserRepository(t)
 	ctx := context.Background()
 
-	// Insert a sample user.
 	testUser := &database.User{
 		Username:     "testuser",
 		PasswordHash: "hashedpassword",
@@ -62,7 +55,6 @@ func TestGetIDByUsername_Success(t *testing.T) {
 	err := db.Create(testUser).Error
 	assert.NoError(t, err, "failed to create sample user")
 
-	// Retrieve user ID by username.
 	id, err := userRepo.GetIDByUsername(ctx, "testuser")
 	assert.NoError(t, err, "expected no error retrieving user ID")
 	assert.Equal(t, testUser.ID, id, "expected returned ID to match inserted user's ID")
@@ -99,7 +91,6 @@ func TestGetByID_Success(t *testing.T) {
 	userRepo, db := setupTestUserRepository(t)
 	ctx := context.Background()
 
-	// Insert a sample user.
 	testUser := &database.User{
 		Username:     "testuser",
 		PasswordHash: "hashedpassword",
@@ -111,7 +102,6 @@ func TestGetByID_Success(t *testing.T) {
 
 	userID := testUser.ID
 
-	// Retrieve user by ID.
 	user, err := userRepo.GetByID(ctx, userID)
 	assert.NoError(t, err, "expected no error retrieving user")
 	assert.Equal(t, testUser.Username, user.Username, "expected username to match")

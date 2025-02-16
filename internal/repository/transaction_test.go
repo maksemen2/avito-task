@@ -1,4 +1,3 @@
-// language: go
 package repository_test
 
 import (
@@ -15,8 +14,6 @@ import (
 	gormLogger "gorm.io/gorm/logger"
 )
 
-// setupTestTransactionRepository initializes an in-memory DB, migrates schema for User and Transaction,
-// and returns a TransactionRepository and the DB instance.
 func setupTestTransactionRepository(t *testing.T) (repository.TransactionRepository, *gorm.DB) {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
 		Logger: gormLogger.Default.LogMode(gormLogger.Silent),
@@ -25,7 +22,6 @@ func setupTestTransactionRepository(t *testing.T) (repository.TransactionReposit
 		t.Fatalf("failed to open in-memory database: %v", err)
 	}
 
-	// Migrate User and Transaction models. Assume database.User and database.Transaction are defined.
 	if err := db.AutoMigrate(&database.User{}, &database.Purchase{}, &database.Transaction{}, &database.Good{}); err != nil {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
@@ -36,12 +32,10 @@ func setupTestTransactionRepository(t *testing.T) (repository.TransactionReposit
 	return txRepo, db
 }
 
-// TestGetHistoryByUserID_Success verifies that transaction history is correctly retrieved.
 func TestGetHistoryByUserID_Success(t *testing.T) {
 	txRepo, db := setupTestTransactionRepository(t)
 	ctx := context.Background()
 
-	// Create sample users.
 	alice := database.User{
 		Username: "alice",
 		Coins:    100,
@@ -54,15 +48,12 @@ func TestGetHistoryByUserID_Success(t *testing.T) {
 	assert.NoError(t, db.Create(&alice).Error, "failed to create alice")
 	assert.NoError(t, db.Create(&bob).Error, "failed to create bob")
 
-	// Create transactions:
-	// Bob sends 50 to Alice.
 	tx1 := database.Transaction{
 		FromUserID: bob.ID,
 		ToUserID:   alice.ID,
 		Amount:     50,
 		CreatedAt:  time.Now().Add(-time.Minute),
 	}
-	// Alice sends 30 to Bob.
 	tx2 := database.Transaction{
 		FromUserID: alice.ID,
 		ToUserID:   bob.ID,
@@ -73,7 +64,6 @@ func TestGetHistoryByUserID_Success(t *testing.T) {
 	assert.NoError(t, db.Create(&tx1).Error, "failed to create transaction from bob to alice")
 	assert.NoError(t, db.Create(&tx2).Error, "failed to create transaction from alice to bob")
 
-	// Retrieve history for Alice.
 	history, err := txRepo.GetHistoryByUserID(ctx, alice.ID)
 	assert.NoError(t, err, "expected no error retrieving coin history")
 
