@@ -10,7 +10,7 @@ CREATE TABLE users (
 CREATE TABLE goods (
     id BIGSERIAL PRIMARY KEY,
     type VARCHAR(255) NOT NULL UNIQUE,
-    price BIGINT NOT NULL CHECK (price > 0),
+    price BIGINT NOT NULL CHECK (price > 0)
 );
 
 CREATE TABLE transactions (
@@ -24,13 +24,13 @@ CREATE TABLE transactions (
         FOREIGN KEY (from_user_id) 
         REFERENCES users(id)
         ON UPDATE CASCADE
-        ON DELETE SET NULL,
+        ON DELETE CASCADE,
         
     CONSTRAINT fk_to_user
         FOREIGN KEY (to_user_id) 
         REFERENCES users(id)
         ON UPDATE CASCADE
-        ON DELETE SET NULL
+        ON DELETE CASCADE
 );
 
 CREATE TABLE purchases (
@@ -41,11 +41,15 @@ CREATE TABLE purchases (
     
     CONSTRAINT fk_user
         FOREIGN KEY (user_id) 
-        REFERENCES users(id),
+        REFERENCES users(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
         
     CONSTRAINT fk_good
         FOREIGN KEY (good_id) 
         REFERENCES goods(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
 );
 
 INSERT INTO goods (type, price)
@@ -60,7 +64,6 @@ VALUES ('t-shirt', 80),
        ('wallet', 50),
        ('pink-hoody', 500)
 ON CONFLICT (type) DO NOTHING;
-
 
 CREATE INDEX idx_transactions_from_user ON transactions(from_user_id);
 CREATE INDEX idx_transactions_to_user ON transactions(to_user_id);
