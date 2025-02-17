@@ -1,4 +1,3 @@
-// language: go
 package services_test
 
 import (
